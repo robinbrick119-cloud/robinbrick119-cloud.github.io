@@ -1,0 +1,1979 @@
+<?xml version="1.0" encoding="utf-8"?>
+<model version="NetLogo 7.0.3" snapToGrid="true">
+  <code><![CDATA[breed [manders mander]
+breed [frogs frog]
+patches-own [salinity] ;0 is clean water, 1 is polluted, 2 is not water
+turtles-own [habitat stage albino grownday fate measurements tutorial grew-up plotted] ; whether they live in clean or polluted water, where they are in life cycle, if albino, when they will become an adult, when they will die, what their final size will be in mm, whether or not this is a turtle created to display tutorial text, whether or not this turtle was alive at metamorphosis, and whether or not this turtle has moved. albino values are 0 (doesn't have,) 1 (has but won't survive,) 2 (has and is normal)
+frogs-own [sex] ; 0 female, 1 male, 2 axanthic (sexual dimorphism won't show)
+manders-own [birthdays born] ; days until birth, and whether or not this salamander actually hatched (distinguishes ghosts)
+globals [coexistence] ; 0 for onlly one species, 1 for two species
+
+; note to anyone reading this code, in NetLogo, "turtles" refers to any moving agent. This model does not have the animal turtles in it, and for its purposes, frogs and salamanders are both "turtles."
+
+to setup
+ ca
+  reset-ticks ; standard setup procedures
+  
+  ask patches [set pcolor blue] ; aesthetic
+  
+  ask patches
+  [ ifelse pycor > 0
+      [ set salinity 0 ]
+      [ set salinity 1] ] ; patches on the top half are clean of salt, and patches on the bottom are polluted. note: this data ended up going completely unused in the final version.
+  
+  ask patches [if pycor = 0 [set salinity 2]]
+  ask patches [if pycor = 1 [set salinity 2]] ; the middle two lines are wall, and are neither clean nor polluted, as they are not water
+  
+  ask patches [if salinity = 2 [set pcolor gray]]
+  ask n-of 150 patches [if salinity = 1 [set pcolor white]] ; aesthetic
+  
+  create-turtles 1 [set tutorial 1 set habitat 2 set color blue set xcor 43 set ycor 54 set label "Welcome, in this model, you will observe the growth of virtual amphibians over a "]
+  create-turtles 1 [set tutorial 1 set habitat 2 set color blue set xcor 43 set ycor 49 set label "90 day period. Some will be born into pure freshwater pools, while others will    "]
+  create-turtles 1 [set tutorial 1 set habitat 2 set color blue set xcor 43 set ycor 44 set label   "be born into pools polluted by salt. Add spotted salamanders, wood frogs, or     "]
+  create-turtles 1 [set tutorial 1 set habitat 2 set color blue set xcor 43 set ycor 39 set label "both to your pools, and then click ''one day'' to begin! See what you can notice,  "]
+  create-turtles 1 [set tutorial 1 set color blue set habitat 2  set xcor 43 set ycor 34 set label "and then click the ''questions'' button in the top right. You will likely need to run   "]
+  create-turtles 1 [set tutorial 1 set color blue set habitat 2 set xcor 43 set ycor 29 set label   "the model multiple times to observe answers to all the questions. This is highly   "]
+  create-turtles 1 [set tutorial 1 set color blue set xcor 43 set habitat 2 set ycor 24 set label    "encouraged! You can learn more by scrolling down to ''model info.'' If you have   "]
+  create-turtles 1 [set tutorial 1 set color blue set xcor 43 set habitat 2 set ycor 19 set label                "further questions, suggestions, or encounter glitches, please email            "]
+  create-turtles 1 [set tutorial 1 set color blue set xcor 43 set habitat 2 set ycor 14 set label                                                "robinbrick119@gmail.com. Thank you!                                    "]
+  ask turtles [set heading 0]
+  ask turtles [set heading 90]
+  ask turtles [forward 6] ; turtles that will blend into the background, used to load text onto the screen
+
+end
+
+
+to spawn-manders
+  ask turtles with [tutorial = 1] [die] ; removes tutorial text
+  
+  if count manders < 2000 
+  [
+    
+    create-manders 100 [set shape "eyeball" set size 1 set color 32 set stage 0 set habitat 0] ; adds 100 salamander eggs, prepares them aesthetically, and sets values to 0 (these lines are unnecessary, as all created variables are 0 by default. they are in for my peace of mind.)
+    
+  
+  create-manders 100 [set shape "eyeball" set size 1 set color 32 set stage 0 set habitat 1 ; adds 100 salamander eggs, prepares them aesthetically, and marks that they live in a polluted habitat. setting their stage to 0 is completely unnecessary, as they are created with all values at 0, but it's written in for my peace of mind.)
+    ]
+  
+    ask manders [if random 4000 = 1 [ifelse random 3 = 1 [set albino 2][set albino 1]]] ; 1 in 4000 chance of beeing albino, of which, 2 of 3 will die no matter what. Numbers pulled from Mitchell et al.
+    
+    ask manders with [habitat = 0] [set birthdays 18 + random 13] ; salamanders in clean water will hatch anywhere from 18 to 30 days into the simulation
+    
+    ask manders with [habitat = 1] [set birthdays 19 + random 17] ; salamanders in polluted water will hatch anywhere from 19 to 35 days into the simulation. Numbers pulled from Ocampo et al.
+    
+    ask manders [plotting]
+    
+  ] ; only works if there are less than 1000 salamanders
+end 
+
+to spawn-frogs
+  ask turtles with [tutorial = 1] [die]; removes tutorial text
+  
+ if count frogs < 2000 
+  [
+    
+    create-frogs 100 [set shape "tadpole" set size 1 set color 32 set stage 1 set habitat 0  ; adds 100 tadpoles, prepares them aesthetically, and marks that them as larva. setting their habitat to 0 is completely unnecessary, as they are created with all values at 0, but it's written in for my peace of mind.)
+      let min-y 3  
+    let max-y 64  
+    let random-y (min-y + (random-float (max-y - min-y)))
+    set ycor random-y
+    set xcor random-xcor ] ; in tandem, these lines make sure these frogs only spawn in the top, clean half
+  
+  create-frogs 100 [set shape "tadpole" set size 1 set color 32 set stage 1 set habitat 1 ; adds 100 tadpoles, prepares them aesthetically, marks them as larva, and marks that they live in a polluted habitat. 
+    let min-y -64  
+    let max-y -3 
+    let random-y (min-y + (random-float (max-y - min-y)))
+    set ycor random-y
+    set xcor random-xcor ] ; in tandem, these lines make sure these frogs only spawn in the bottom, polluted half 
+  
+  ask frogs [if random 400 = 1 [ifelse random 100 = 1 [set albino 2][set albino 1]]] ; frogs have a 1 in 400 chance of being albino, but only 1% of them will survive when they reach adulthood, as this increases the risk of predation
+  
+  ask frogs [if albino > 0[set shape "tadpole-albino"]] ; makes albino tadpoles match aesthetically
+    
+    ask frogs [if random 2 = 1 [set sex 1]] ; gives frogs a 50% chance to be male (they are female by default)
+    
+    ask frogs [if random 450 = 1 [set sex 3]] ; gives frogs a 2.5% chance to have axanthism, which makes their sexual dimorphism unnoticeable.
+    
+    ask frogs [if sex = 3 [set color cyan]] ; makes axanthic frogs blue
+   
+    ask frogs with [habitat = 0] [set grownday 50 + random 11] ; tadpoles in clean water will metamorphize anywhere ffrom 50 to 60 days into the experiment
+    
+    ask frogs with [habitat = 1] [set grownday 64 + random 3] ; tadpoles in polluted water will metamorphize anywhere from 64 to 66 days into the experiment
+    
+    ask frogs with [habitat = 0] [set measurements (10 ^ (1.15 + random .05))]
+    ask frogs with [habitat = 1] [set measurements (10 ^ (1.23 + random .03))] ; sets the final size of frogs based on environment, with numbers bein average body length from Ocampo et al
+    
+    ask frogs [plotting]
+    
+  ] ; only works if there are less than 1000 frogs
+end
+
+to plotting
+  ask turtles with [(habitat = 0) and (plotted = 0)] [ let min-y 3  
+    let max-y 64  
+    let random-y (min-y + (random-float (max-y - min-y)))
+    set ycor random-y
+    set xcor random-xcor
+  set plotted 1] 
+  
+  ask turtles with [(habitat = 1) and (plotted = 0)] [let min-y -64  
+    let max-y -3 
+    let random-y (min-y + (random-float (max-y - min-y)))
+    set ycor random-y
+    set xcor random-xcor 
+  set plotted 1] ; makes sure that animals habitats are visually represented
+  
+  ask turtles with [(habitat = 0) and (ycor < 8) and (xcor < -27)] [ let min-y 3  
+    let max-y 64  
+    let random-y (min-y + (random-float (max-y - min-y)))
+    set ycor random-y
+    set xcor random-xcor
+  set plotted 1] 
+
+  ask turtles with [(habitat = 1) and (ycor < -59) and (xcor < -18)] [let min-y -64  
+    let max-y -3 
+    let random-y (min-y + (random-float (max-y - min-y)))
+    set ycor random-y
+    set xcor random-xcor 
+  set plotted 1]; if the turtle fell right under the stream label, it will move
+  
+  ask turtles with [(habitat = 0) and (ycor < 8) and (xcor < -27)] [ let min-y 3  
+    let max-y 64  
+    let random-y (min-y + (random-float (max-y - min-y)))
+    set ycor random-y
+    set xcor random-xcor
+  set plotted 1] 
+
+  ask turtles with [(habitat = 1) and (ycor < -59) and (xcor < -18)] [let min-y -64  
+    let max-y -3 
+    let random-y (min-y + (random-float (max-y - min-y)))
+    set ycor random-y
+    set xcor random-xcor 
+  set plotted 1]
+  
+  ask turtles with [(habitat = 0) and (ycor < 8) and (xcor < -27)] [ let min-y 3  
+    let max-y 64  
+    let random-y (min-y + (random-float (max-y - min-y)))
+    set ycor random-y
+    set xcor random-xcor
+  set plotted 1] 
+
+  ask turtles with [(habitat = 1) and (ycor < -59) and (xcor < -18)] [let min-y -64  
+    let max-y -3 
+    let random-y (min-y + (random-float (max-y - min-y)))
+    set ycor random-y
+    set xcor random-xcor 
+  set plotted 1] ; repeats in case they end up in the same spot again
+end
+
+to day
+  if ticks < 90 [tick] ; stops the expirement at 90 days
+  
+  if count manders > 0 [if count frogs > 0 [set coexistence 1]] ; if there are both salamanders and frogs, some calculations will be affected
+  
+  if ticks = 1 [
+    
+    ask manders with [habitat = 0] [ifelse coexistence = 0 [set grownday 50 + random 11][set grownday 57 + random 5]]
+    
+    ask manders with [habitat = 1] [ifelse coexistence = 0 [set grownday 68 + random 5][set grownday 60 + random 5]]
+    
+  
+  
+  if coexistence = 0 [ask frogs with [habitat = 0][ifelse random 6 = 1 [set fate 2 + random 9][ifelse random 5 = 1 [set fate 50 + random 11][if random 4 = 1 [set fate 10 + random 80]]]]] ; if frogs exist without salamanders, then the ones in clean water have a 1 in 6 chance of dying in the first 10 days, the survivors of which have a 1 in 5 chance of dying days 50 to 60, and the survivors of both these events have a 1 in 4 chance to die at any time after the first 10 days. This leaves half frogs to die at some point, with the numbers pulled from Sanzo et al.
+  if coexistence = 0 [ask frogs with [habitat = 1][ifelse random 2 = 1 [set fate 2 + random 9][ifelse random 3 = 1 [set fate 50 + random 11][if random 2 = 1 [set fate 10 + random 80]]]]] ; if frogs exist without salamanders, then the ones in salt have a 50% chance of dying in the first 10 days, the survivors of which have a 1 in 3 chance of dying days 50 to 60, and the survivors of both these events have a 50% chance to die at any time after the first 10 days. This leaves 5/6 frogs to die at some point, with the numbers pulled from Sanzo et al.
+  
+  if coexistence = 1 [ask frogs with [habitat = 0] [if random 100 < 37 [set fate 100]]] ; with coexistence, frogs in clean water have a 37% survival rate, setting these ones to have a fate that will never come. these numbers are from Ocampo et al, reverse engineered from what was assumed to be a @ * arcsin(squarerooteP) equation.
+  if coexistence = 1 [ask frogs with [habitat = 1] [if random 100 < 19 [set fate 100]]] ; with coexistence, frogs in polluted water have a 19% survival rate, setting these ones to have a fate that will never come. these numbers are from Ocampo et al, reverse engineered from what was assumed to be a @ * arcsin(squarerooteP) equation.
+  if coexistence = 0 [ask manders with [habitat = 0] [if random 100 < 37 [set fate 100]]] ; salamanders in clean water with no tadpoles have a 37% survival rate, setting these ones to have a fate that will never come. these numbers are from Ocampo et al, reverse engineered from what was assumed to be a @ * arcsin(squarerooteP) equation.
+  if coexistence = 0 [ask manders with [habitat = 1] [if random 100 < 12 [set fate 100]]] ; salamanders in polluted water with no tadpoles have a 12% survival rate, setting these ones to have a fate that will never come. these numbers are from Ocampo et al, reverse engineered from what was assumed to be a @ * arcsin(squarerooteP) equation.
+  if coexistence = 1 [ask manders with [habitat = 0] [if random 100 < 19 [set fate 100]]] ; with coexistence, salamanders in clean water have a 19% survival rate, setting these ones to have a fate that will never come. these numbers are from Ocampo et al, reverse engineered from what was assumed to be a @ * arcsin(squarerooteP) equation.
+  if coexistence = 1 [ask manders with [habitat = 1] [if random 100 < 4 [set fate 100]]] ; with coexistence, polluted water have a 4% survival rate, setting these ones to have a fate that will never come. these numbers are from Ocampo et al, reverse engineered from what was assumed to be a @ * arcsin(squarerooteP) equation.
+  
+  if coexistence = 1 [ask turtles with [fate < 100] [ifelse random 2 = 1 [set fate 2 + random 9]
+    [ifelse random 3 = 1 [set fate 50 + random 11][set fate 10 + random 80]]]] ; with coexistence, amphibians that did not meet the survival rate in the above block have a 1/2 (or 3/6) chance to die in the first 10 days, 1/6 to die from days 50 to 60, and 1/2 (or 2/6) chance to die at any time after the first 10 days.
+  
+  if coexistence = 1 [ask turtles with [fate < 100] [ifelse random 2 = 1 [set fate 2 + random 9]
+    [ifelse random 3 = 1 [set fate 50 + random 11][set fate 10 + random 80]]]] ; with coexistence, amphibians that did not meet the survival rate in the above block have a 1/2 (or 3/6) chance to die in the first 10 days, 1/6 to die from days 50 to 60, and 1/2 (or 2/6) chance to die at any time after the first 10 days.
+  
+  if coexistence = 0 [ask manders with [fate < 100] [ifelse random 2 = 1 [set fate 2 + random 9]
+    [ifelse random 3 = 1 [set fate 50 + random 11][set fate 10 + random 80]]]] ; without coexistence, salamanders that did not meet the survival rate in the above block have a 1/2 (or 3/6) chance to die in the first 10 days, 1/6 to die from days 50 to 60, and 1/2 (or 2/6) chance to die at any time after the first 10 days. This does not reroll the fates of tadpoles living alone.
+  
+  if coexistence = 0 [
+      ask manders with [habitat = 0] [set measurements (50 + random 5)]
+    ask manders with [habitat = 1] [set measurements (44 + random 7)]
+  ]
+  
+    if coexistence = 1 [
+      ask manders with [habitat = 0] [set measurements (47 + random 6)]
+    ask manders with [habitat = 1] [set measurements (33 + random 9)] ; sets salamander final size based on habitat and competition, with numbers pulled from Ocampo et al.'s finding on average length in mm
+  ] 
+    
+  ] ; all of the above only happens at the beginning
+  
+  ask turtles with [fate = ticks] [set stage 3] ; if a turtle's coded day of death equals today, change into a ghost, and cease all growth related procedures
+  
+  ask turtles with [stage < 3] [set size 1 + (((measurements * (ticks / 90))) / 4)] ; turtles that are not ghosts grow, proportional to their established final size
+  hatching
+  growing
+  death
+end
+
+to hatching
+  ask manders with [stage < 3] [if birthdays = ticks [set born 1 set stage 1 set shape "salamander-larva"]] ; if a salamander's hatch time lines up with the current day, it gains the properties of a larva
+  ask manders with [stage = 1] [if albino > 0 [set shape "salamander-larva-albino"]] ; albino larva have their sprites updated to reflect this
+end
+
+to growing
+  ask manders with [(grownday = ticks) and (stage = 1)] [set grew-up 1 set stage 2 set shape "salamander"] ; larvae that are not dead grows up mechanically and aesthetically when time
+  ask manders with [(stage = 2) and (albino = 1)] [set stage 3] ; albino larvae that were not going to survive now die
+  ask manders with [(stage = 2) and (albino = 2)] [set shape "salamander-albino"] ; albino larvae that survive have their aesthetics updates
+  ask frogs with [(grownday = ticks) and (stage = 1)] [set grew-up 1 set stage 2 set shape "frog"] ; larvae that are not dead grows up mechanically and aesthetically when time
+  ask frogs with [(stage = 2) and (albino = 1)] [set stage 3]  ; albino larvae that were not going to survive now die
+ask frogs with [(stage = 2) and (albino = 2)] [set shape "frog-albino"] ; albino larvae that survive have their aesthetics updates
+ask frogs with [(sex = 0) and (stage = 2)] [set color 133] 
+ask frogs with [(sex = 1) and (stage = 2)] [set color 131] ; frogs now display sexual dimorphism
+end
+
+to death
+  ask turtles with [stage = 3] [set shape "ghost" set color 115] ; makes aesthetic changes to dead amphibians. mechanical changes come from their stage being set to 3
+end
+
+to week
+  day
+   day
+      day
+      day
+    day
+         day
+             day ; performs the day procedure 7 times
+end
+    
+to month
+  week
+  week
+  week
+  week
+  day
+  day ; performs the day procedure 30 times
+      end
+        
+to skip
+  while [ticks < 90] [day] ; performs the day procedure until 90 days has been reached
+end
+
+to hide-ghosts
+  ask turtles with [stage = 3][hide-turtle]
+  ask turtles with [stage < 3][show-turtle]
+end
+
+to show-ghosts
+  ask turtles [show-turtle]
+end
+
+to show-ghosts-only
+  ask turtles with [stage = 3][show-turtle]
+  ask turtles with [stage < 3][hide-turtle]
+end
+
+to highlight-color-mutations
+  ask turtles [hide-turtle]
+  ask turtles with [albino > 0] [show-turtle]
+  ask frogs with [sex = 3] [show-turtle]
+end
+
+to questions
+ ask turtles [hide-turtle]
+  clear-output
+  output-print "1. Which habitat had fewer deaths?"
+  output-print " "
+  output-print "2. Which habitat had bigger salamanders?"
+  output-print " "
+  output-print "3. Which habitat had bigger frogs?"
+  output-print " "
+  output-print "4. Regardless of habitat, is there a difference of the survival rate of salamanders alone vs. salamanders"
+  output-print "with frogs? What about frogs alone vs. frogs with salamanders?"
+  output-print " "
+  output-print "5. Do Salamanders reach adulthood faster or slower in the salty habitat? What about frogs?"
+  output-print " "
+  output-print "6. How can salt be a pollutant when it is a natural substance, and many animals live in the salty ocean?"
+  output-print " "
+  output-print "7. Some frogs are a lighter red, while others are a darker brown, can you guess or find out why that is?"
+  output-print " "
+  output-print "8. Did you see any albino (white) animals? Did they tend to survive to adulthood? Why or why not?"
+  output-print " "
+  output-print "9. Did you see any blue frogs? What about salamanders?"
+  output-print " "
+  output-print "10. Albino (white) and Axanthic (blue) animals are pretty rare, but it may not take long at all to see one"
+ output-print "in this model. Why do you think that is?"
+  output-print " "
+  output-print "11. Do you think it would be easy to find an albino or axanthic animal in real life?"
+  output-print " "
+  output-print "12. Survival is random, so theoretically, the salty habitat could end up having a higher survival rate than"
+  output-print "the clean habitat. Can you observe this? How would a rare event like this be different from a rare event like"
+ output-print "an animal being born albino?"
+  output-print " "
+  
+  create-turtles 1 [set tutorial 2 set color blue set xcor 43 set habitat 2 set ycor 31 set label "Please check the ''command center'' below the model. Thanks for playing :)"]
+  ask turtles with [tutorial = 2][show-turtle]
+end
+
+to questions-answers
+  clear-output
+ ask turtles [hide-turtle]
+  output-print "1. Which habitat had fewer deaths?"
+  output-print " "
+  output-print "The clean habitat should have fewer deaths."
+  output-print " "
+  output-print "2. Which habitat had bigger salamanders?"
+  output-print " "
+  output-print "The clean habitat has bigger salamanders."
+  output-print " "
+  output-print "3. Which habitat had bigger frogs?"
+  output-print " "
+  output-print "The frogs in the polluted habitat are bigger. This may seem odd, and some studies have found it inhibits"
+  output-print "their growth, but others have found salty water to make frogs large and bloated (Hall et al. 2017) (Ocampo et al. 2022.)"
+ output-print "What's clear is that salt pollution causes abnormal growth one way or another."
+  output-print " "
+  output-print "4. Regardless of habitat, is there a difference of the survival rate of salamanders alone vs. salamanders"
+ output-print "with frogs? What about frogs alone vs. frogs with salamanders?"
+  output-print " "
+  output-print "The survival rate of both species will go down. This is because of competition. Adding more animal species"
+  output-print "adds more demand for the same amount of food. In fact, animals will also compete with others of their own species,"
+  output-print "however that has not been programmed into this model. Look up ''carrying capacity if you would like to learn more!''"
+  output-print " "
+  output-print "5. Do Salamanders reach adulthood faster or slower in the salty habitat? What about frogs?"
+  output-print " "
+  output-print "Frogs and salamanders both metamorphosize slower in salt polluted pools. This leaves them more vunerable"
+  output-print "to predation in their earlier life stages."
+  output-print " "
+  output-print "6. How can salt be a pollutant when it is a natural substance, and many animals live in the salty ocean?"
+  output-print " "
+  output-print "Animals in habitats like the ocean or the sea have been living in salt water for millions of years, so they"
+  output-print "are adapted to do so. Meanwhile, animals like frogs and salamanders have spent millions of years adapting to"
+  output-print "freshwater, and their habitats have only become salty recently. This happens because road salt used in the" 
+  output-print "winter time will end up in our streams and freshwater pools after it rains, and it stays there forever!"
+  output-print " "
+  output-print "7. Some frogs are a lighter red, while others are a darker brown, can you guess or find out why that is?"
+  output-print " "
+  output-print "The light red frogs are female, while the dark brown frogs are male. This is an example of" 
+  output-print "''sexual dimorphism,'' which refers to males and females of a species having different appearances. Some" 
+  output-print "other sexually dimorphic animals are lions or cardinals."
+  output-print " "
+  output-print "8. Did you see any albino (white) animals? Did they tend to survive to adulthood? Why or why not?"
+  output-print " "
+  output-print "Whether or not you saw an albino animal depends partially on luck, but mostly, how many animals you spawned" 
+  output-print "in. These animals may die at adulthood, as they become more vunerable to predation. This is especially likely" 
+  output-print "for frogs, where observations of albino adults are very, very limited."
+  output-print " "
+  output-print "9. Did you see any blue frogs? What about salamanders?"
+  output-print " "
+  output-print "You may have seen a blue frog, but you most definitely did not see a blue salamander. This is a trait called" 
+  output-print "''axanthism,'' which interferes with an animal's ability to produce yellow pigment. This has been observed in"
+  output-print "frogs at a rate of around 1/400 to 1/500, depending on factors like species and location, but almost never"
+  output-print "appears in salamnaders."
+  output-print " "
+  output-print "10. Albino (white) and Axanthic (blue) animals are pretty rare, but it may not take long at all to see one"
+  output-print "in this model. Why do you think that is?"
+  output-print " "
+  output-print "In this model, you can spawn in hundreds of animals at once. So while any one animal is unlikely to have"
+  output-print "these mutations, it becomes highly likely that somewhere in the population, the mutation will occur. This"
+  output-print "is one of the reasons ''sample size'' (how many individuals you're studying) is important in science. A" 
+  output-print "high sample size makes it more likely to see all the unlikely things that can happen to one individual!"
+  output-print " "
+  output-print "11. Do you think it would be easy to find an albino or axanthic animal in real life?"
+  output-print " "
+  output-print "This would be much harder in real life than in the model, as instead of clicking a button, you would need"
+  output-print "to go outside and find these animals, and the number you find would be much lower. Simulations cannot"
+  output-print "capture everything about the scientific process!"
+  output-print " "
+  output-print "12. Survival is random, so theoretically, the salty habitat could end up having a higher survival rate than"
+  output-print"the clean habitat. Can you observe this? How would a rare event like this be different from a rare event"
+  output-print"like an animal being born albino?"
+  output-print " "
+  output-print "It is near impossible for the salty habitat to end up with a higher survival rate. This is also due to"
+  output-print "sample size. The odds of an unlikely event happening to an entire population or sevral times over"
+  output-print "are very, very low. Try to flip a coin and get tails 50 times in a row. I bet you can't, as the odds"
+  output-print "of this are over 1 in a quadrillion."
+  output-print " "
+  
+  create-turtles 1 [set tutorial 2 set color blue set xcor 43 set habitat 2 set ycor 31 set label "Please check the ''command center'' below the model. Thanks for playing :)"]
+  ask turtles with [tutorial = 2][show-turtle]
+end]]></code>
+  <widgets>
+    <view x="10" wrappingAllowedX="true" y="130" frameRate="30.0" minPycor="-64" height="654" showTickCounter="true" patchSize="5.0" fontSize="14" wrappingAllowedY="true" width="653" tickCounterLabel="days" maxPycor="64" updateMode="0" maxPxcor="64" minPxcor="-64"></view>
+    <button x="695" y="20" height="35" disableUntilTicks="false" forever="false" kind="Observer" width="115" display="One day">day</button>
+    <button x="815" y="20" height="35" disableUntilTicks="false" forever="false" kind="Observer" width="115" display="One week">week</button>
+    <button x="935" y="20" height="35" disableUntilTicks="false" forever="false" kind="Observer" width="115" display="One month">Month</button>
+    <button x="1055" y="20" height="36" disableUntilTicks="false" forever="false" kind="Observer" width="155" display="Skip to end">skip</button>
+    <button x="695" y="55" height="36" disableUntilTicks="false" forever="false" kind="Observer" width="115" display="Hide deaths">hide-ghosts</button>
+    <button x="815" y="55" height="36" disableUntilTicks="false" forever="false" kind="Observer" width="115" display="Show deaths">show-ghosts</button>
+    <button x="935" y="55" height="36" disableUntilTicks="false" forever="false" kind="Observer" width="111" display="Show only deaths">show-ghosts-only</button>
+    <button x="1055" y="55" height="35" disableUntilTicks="false" forever="false" kind="Observer" width="155" display="Show color mutations only">highlight-color-mutations</button>
+    <note x="545" y="30" backgroundDark="-16777216" fontSize="18" width="145" markdown="false" height="35" textColorDark="-1" textColorLight="-16777216" backgroundLight="16777215">Run experiment</note>
+    <plot x="895" autoPlotX="true" yMax="10.0" autoPlotY="true" yAxis="Living salamanders" y="135" xMin="0.0" height="217" legend="false" xMax="10.0" yMin="0.0" width="210" xAxis="Days" display="Spotted salamanders living in clean water">
+      <setup></setup>
+      <update></update>
+      <pen interval="1.0" mode="0" display="default" color="-16777216" legend="true">
+        <setup></setup>
+        <update><![CDATA[plot count manders with [(stage < 3) and (habitat = 0)]]]></update>
+      </pen>
+    </plot>
+    <plot x="670" autoPlotX="true" yMax="10.0" autoPlotY="true" yAxis="Living amphibianns" y="135" xMin="0.0" height="217" legend="false" xMax="10.0" yMin="0.0" width="215" xAxis="Days" display="Amphibians living in clean water">
+      <setup></setup>
+      <update></update>
+      <pen interval="1.0" mode="0" display="default" color="-16777216" legend="true">
+        <setup></setup>
+        <update><![CDATA[plot count turtles with [(stage < 3) and (habitat = 0)]]]></update>
+      </pen>
+    </plot>
+    <plot x="670" autoPlotX="true" yMax="10.0" autoPlotY="true" yAxis="Living amphibianns" y="465" xMin="0.0" height="217" legend="false" xMax="10.0" yMin="0.0" width="220" xAxis="Days" display="Amphibians living in polluted  water">
+      <setup></setup>
+      <update></update>
+      <pen interval="1.0" mode="0" display="default" color="-16777216" legend="true">
+        <setup></setup>
+        <update><![CDATA[plot count turtles with [(stage < 3) and (habitat = 1)]]]></update>
+      </pen>
+    </plot>
+    <note x="20" y="40" backgroundDark="-16777216" fontSize="18" width="65" markdown="false" height="35" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">Setup</note>
+    <button x="320" y="60" height="35" disableUntilTicks="false" forever="false" kind="Observer" width="220" display="Spawn wood frog tadpoles">spawn-frogs</button>
+    <button x="320" y="20" height="35" disableUntilTicks="false" forever="false" kind="Observer" width="220" display="Spawn spotted salamander eggs">Spawn-manders</button>
+    <monitor x="670" precision="1" y="360" height="60" fontSize="11" width="100" display="Survival %"><![CDATA[((count turtles with [(stage < 3) and (habitat = 0)]) / (count turtles with [habitat = 0])) * 100]]></monitor>
+    <monitor x="670" precision="1" y="690" height="60" fontSize="11" width="100" display="Survival %"><![CDATA[((count turtles with [(stage < 3) and (habitat = 1)]) / (count turtles with [habitat = 1])) * 100]]></monitor>
+    <monitor x="895" precision="1" y="360" height="60" fontSize="11" width="100" display="Survival %"><![CDATA[((count manders with [(stage < 3) and (habitat = 0)]) / (count manders with [habitat = 0])) * 100]]></monitor>
+    <monitor x="900" precision="1" y="690" height="60" fontSize="11" width="100" display="Survival %"><![CDATA[((count manders with [(stage < 3) and (habitat = 1)]) / (count manders with [habitat = 1])) * 100]]></monitor>
+    <monitor x="1130" precision="1" y="690" height="60" fontSize="11" width="100" display="Survival %"><![CDATA[((count frogs with [(stage < 3) and (habitat = 1)]) / (count frogs with [habitat = 1])) * 100]]></monitor>
+    <plot x="1115" autoPlotX="true" yMax="10.0" autoPlotY="true" yAxis="Living frogs" y="135" xMin="0.0" height="217" legend="false" xMax="10.0" yMin="0.0" width="215" xAxis="Days" display="Wood frogs living in clean water">
+      <setup></setup>
+      <update></update>
+      <pen interval="1.0" mode="0" display="default" color="-16777216" legend="true">
+        <setup></setup>
+        <update><![CDATA[plot count frogs with [(stage < 3) and (habitat = 0)]]]></update>
+      </pen>
+    </plot>
+    <monitor x="1115" precision="1" y="360" height="60" fontSize="11" width="100" display="Survival %"><![CDATA[((count frogs with [(stage < 3) and (habitat = 0)]) / (count frogs with [habitat = 0])) * 100]]></monitor>
+    <note x="1215" y="40" backgroundDark="0" fontSize="18" width="155" markdown="false" height="75" textColorDark="-1" textColorLight="-16777216" backgroundLight="0">After experiment</note>
+    <button x="1370" y="55" height="35" disableUntilTicks="false" forever="false" kind="Observer" width="140" display="Questions and Answers">questions-answers</button>
+    <button x="1370" y="20" height="35" disableUntilTicks="false" forever="false" kind="Observer" width="140" display="Questions">questions</button>
+    <monitor x="1345" precision="1" y="135" height="60" units="mm" fontSize="11" width="240" display="Salamander size average (clean)"><![CDATA[(ticks / 90) * (mean [measurements] of manders with [(habitat = 0) and (stage < 3)])]]></monitor>
+    <monitor x="1345" precision="1" y="200" height="60" units="mm" fontSize="11" width="240" display="Frog size average (clean) "><![CDATA[(ticks / 90) * (mean [measurements] of frogs with [(habitat = 0) and (stage < 3)])]]></monitor>
+    <monitor x="1345" precision="1" y="265" height="60" units="days" fontSize="11" width="240" display="Hatchtime average (clean) ">mean [birthdays] of manders with [(born = 1) and (habitat = 0)]</monitor>
+    <monitor x="1345" precision="1" y="330" height="60" units="days" fontSize="11" width="240" display="Salamander metamorphosis average (clean) ">mean [grownday] of manders with [(grew-up = 1) and (habitat = 0)]</monitor>
+    <monitor x="1345" precision="1" y="395" height="60" units="days" fontSize="11" width="240" display="Frog metamorphosis average (clean) ">mean [grownday] of frogs with [(grew-up = 1) and (habitat = 0)]</monitor>
+    <plot x="895" autoPlotX="true" yMax="10.0" autoPlotY="true" yAxis="Living salamanders" y="465" xMin="0.0" height="217" legend="false" xMax="10.0" yMin="0.0" width="220" xAxis="Days" display="Spotted salamanders living in polluted  water">
+      <setup></setup>
+      <update></update>
+      <pen interval="1.0" mode="0" display="default" color="-16777216" legend="true">
+        <setup></setup>
+        <update><![CDATA[plot count manders with [(stage < 3) and (habitat = 1)]]]></update>
+      </pen>
+    </plot>
+    <plot x="1120" autoPlotX="true" yMax="10.0" autoPlotY="true" yAxis="Living frogs" y="465" xMin="0.0" height="217" legend="false" xMax="10.0" yMin="0.0" width="220" xAxis="Days" display="Wood frogs living in polluted  water">
+      <setup></setup>
+      <update></update>
+      <pen interval="1.0" mode="0" display="default" color="-16777216" legend="true">
+        <setup></setup>
+        <update><![CDATA[plot count frogs with [(stage < 3) and (habitat = 1)]]]></update>
+      </pen>
+    </plot>
+    <monitor x="1345" precision="1" y="465" height="60" units="mm" fontSize="11" width="240" display="Salamander size average (polluted)"><![CDATA[(ticks / 90) * (mean [measurements] of manders with [(habitat = 1) and (stage < 3)])]]></monitor>
+    <monitor x="1345" precision="1" y="530" height="60" units="mm" fontSize="11" width="240" display="Frog size average (polluted)"><![CDATA[(ticks / 90) * (mean [measurements] of frogs with [(habitat = 1) and (stage < 3)])]]></monitor>
+    <monitor x="1345" precision="1" y="595" height="60" units="days" fontSize="11" width="240" display="Hatchtime average (polluted) ">mean [birthdays] of manders with [(born = 1) and (habitat = 1)]</monitor>
+    <monitor x="1345" precision="1" y="660" height="60" units="days" fontSize="11" width="240" display="Salamander metamorphosis average (polluted) ">mean [grownday] of manders with [(grew-up = 1) and (habitat = 1)]</monitor>
+    <monitor x="1345" precision="1" y="725" height="60" units="days" fontSize="11" width="240" display="Frog metamorphosis average (polluted) ">mean [grownday] of frogs with [(grew-up = 1) and (habitat = 1)]</monitor>
+    <button x="90" y="20" height="72" disableUntilTicks="false" forever="false" kind="Observer" width="220" display="Start/reset">setup</button>
+    <note x="15" y="420" backgroundDark="-13345367" fontSize="15" width="190" markdown="false" height="25" textColorDark="-1" textColorLight="-131587" backgroundLight="-13345367">Clean freshwater stream</note>
+    <note x="15" y="750" backgroundDark="-13345367" fontSize="15" width="230" markdown="false" height="30" textColorDark="-1" textColorLight="-131587" backgroundLight="-13345367">Salt-polluted freshwater stream</note>
+  </widgets>
+  <info><![CDATA[## WHAT IS IT?
+
+This model demonstraits the effect of salt pollution on the growth of spotted salamanders and wood frogs. It affects factors such as survival rates, body size, and time to metamorphosis stages. It also demonstrates interspecies competition, genetic mutation, and statistical principles.
+
+## HOW IT WORKS
+
+When spawned in, amphibians will grow larger, metamorphosize, and potentially die, as time moves forward. The habitat they are born into, as well as whether or not other species are present, may affect these variables. Amphibians may also be born with color mutations. Numbers used for these variables in the code are based on several sttudies, cited below. 
+
+## HOW TO USE IT
+
+Begin by clicking start/reset button, and then click the buttons next to it to spawn in spotted salamanders, wood frogs, or both. This can be done multiple times for a larger sample size. Then click "one day," or other time based buttons continously and observe growth and death. Afterwards, click the "questions" buttons and read the command center, and click the "questions and answers" button when you have read and thought about the questions.
+
+## THINGS TO TRY
+
+The faster time buttons may be tempting, and they're useful for getting several data quickly, but try at least one round of progressing entirely through the "one day" button. 
+
+Try the model at least three times, once with only salamanders, once with only frogs, and once with both. Pay attention to the survival rates each time. Try and remember and compare them, or write them down somewhere.
+
+See how many blue or white animals you can get to survive to adulthood.
+
+## EXTENDING THE MODEL
+
+Wood frogs start as tadpoles, not eggs, because I did not find data on road salt effect on frog hatch time. There are no intermediate stages between larva and adult, again, because I could only find data on final metamorphosis time. 
+
+Spotted salamander eggs and wood frog tadpoles only spawn in in groups of 100. This is not reflective of the studies, but rather exists to make percentages clearer to the user. Additionally, while interspecies competition is a factor in this model, intraspecies competition is not.
+
+Only animal body length is measured, not body mass or snout-vent length, which the studies also had information on. The length of wood frogs does not change by interspecies competition, and uses Ocampo et al.'s data regardless. This is because Ocampo et al.'s findings were different from Sanzo & Hector's, and I did not want to confuse the user with data I did not fully understand. A second study supported the data of Ocampo et al. however it did not measure full body length, only snout vent length and mass (Hall et al., 2017)
+
+Albino tadpoles only have a 1% chance of survival, as the literature I found suggested their survival odds are very low, but gave no clear numerical values. Amphibian adult wood frogs have been observed, however. Albino spotted salamander odds and axanthic wood frog odds were drawn from studies on populations of the same genus, but different species.
+
+Ocampo et al. studied the factors of dragonfly larvae or zooplankton, and these findings were not incorporated as options.
+
+If you have suggestions for expansions or find glitches, please email robinbrick119@gmail.com
+
+
+## CREDITS AND REFERENCES
+
+This model was created by Robin Brick, and she would like to thank Dr. Andrew Calinger-Yoak, for teaching her how to code in NetLogo, Ellie Nowels, for managing flowohio.org and adding this model to the website, and all of her beta testers: Andrew Calinger-Yoak, S. Conley, Ellen G, Ellie Nowels, Linda P, and Jenna Roller-Knapp.
+
+
+Below is a bibliography of references from which data influenced the code
+
+Hall, E. M., Brady, S. P., Mattheus, N. M., Earley, R. L., Diamond, M., & Crespi, E. J. (2017). Physiological consequences of exposure to salinized roadside ponds on wood frog larvae and adults. Biological Conservation, 209, 98-106.
+
+Halls, K. M. (2004). Albino animals. Millbrook Press.
+
+Henle, K., & Dubois, A. (2017). Studies on Anomalies in Natural Populations of Amphibians. MERTENSIELLA, 25, 185-242.
+
+Mitchell, J. C., & Church, D. R. (2002). Leucistic marbled salamanders (Ambystoma opacum) in Virginia. Herpetological Review, 29, 229-230.
+
+Ocampo, M., Chuirazzi, C., & Takahashi, M. K. (2022). The effects of road salt (NaCl), predation, and competition on the growth and community interactions of spotted salamanders (Ambystoma maculatum) and wood frogs (Lithobates sylvaticus). Environmental Pollution, 315, 120349.
+
+Sanzo, D., & Hecnar, S. J. (2006). Effects of road de-icing salt (NaCl) on larval wood frogs (Rana sylvatica). Environmental pollution, 140(2), 247-256.
+]]></info>
+  <turtleShapes>
+    <shape name="default" rotatable="true" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="5"></point>
+        <point x="40" y="250"></point>
+        <point x="150" y="205"></point>
+        <point x="260" y="250"></point>
+      </polygon>
+    </shape>
+    <shape name="airplane" rotatable="true" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="0"></point>
+        <point x="135" y="15"></point>
+        <point x="120" y="60"></point>
+        <point x="120" y="105"></point>
+        <point x="15" y="165"></point>
+        <point x="15" y="195"></point>
+        <point x="120" y="180"></point>
+        <point x="135" y="240"></point>
+        <point x="105" y="270"></point>
+        <point x="120" y="285"></point>
+        <point x="150" y="270"></point>
+        <point x="180" y="285"></point>
+        <point x="210" y="270"></point>
+        <point x="165" y="240"></point>
+        <point x="180" y="180"></point>
+        <point x="285" y="195"></point>
+        <point x="285" y="165"></point>
+        <point x="180" y="105"></point>
+        <point x="180" y="60"></point>
+        <point x="165" y="15"></point>
+      </polygon>
+    </shape>
+    <shape name="arrow" rotatable="true" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="0"></point>
+        <point x="0" y="150"></point>
+        <point x="105" y="150"></point>
+        <point x="105" y="293"></point>
+        <point x="195" y="293"></point>
+        <point x="195" y="150"></point>
+        <point x="300" y="150"></point>
+      </polygon>
+    </shape>
+    <shape name="box" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="285"></point>
+        <point x="285" y="225"></point>
+        <point x="285" y="75"></point>
+        <point x="150" y="135"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="135"></point>
+        <point x="15" y="75"></point>
+        <point x="150" y="15"></point>
+        <point x="285" y="75"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="15" y="75"></point>
+        <point x="15" y="225"></point>
+        <point x="150" y="285"></point>
+        <point x="150" y="135"></point>
+      </polygon>
+      <line endX="150" startY="285" marked="false" color="255" endY="135" startX="150"></line>
+      <line endX="15" startY="135" marked="false" color="255" endY="75" startX="150"></line>
+      <line endX="285" startY="135" marked="false" color="255" endY="75" startX="150"></line>
+    </shape>
+    <shape name="bug" rotatable="true" editableColorIndex="0">
+      <circle x="96" y="182" marked="true" color="-1920102913" diameter="108" filled="true"></circle>
+      <circle x="110" y="127" marked="true" color="-1920102913" diameter="80" filled="true"></circle>
+      <circle x="110" y="75" marked="true" color="-1920102913" diameter="80" filled="true"></circle>
+      <line endX="80" startY="100" marked="true" color="-1920102913" endY="30" startX="150"></line>
+      <line endX="220" startY="100" marked="true" color="-1920102913" endY="30" startX="150"></line>
+    </shape>
+    <shape name="butterfly" rotatable="true" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="165"></point>
+        <point x="209" y="199"></point>
+        <point x="225" y="225"></point>
+        <point x="225" y="255"></point>
+        <point x="195" y="270"></point>
+        <point x="165" y="255"></point>
+        <point x="150" y="240"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="165"></point>
+        <point x="89" y="198"></point>
+        <point x="75" y="225"></point>
+        <point x="75" y="255"></point>
+        <point x="105" y="270"></point>
+        <point x="135" y="255"></point>
+        <point x="150" y="240"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="139" y="148"></point>
+        <point x="100" y="105"></point>
+        <point x="55" y="90"></point>
+        <point x="25" y="90"></point>
+        <point x="10" y="105"></point>
+        <point x="10" y="135"></point>
+        <point x="25" y="180"></point>
+        <point x="40" y="195"></point>
+        <point x="85" y="194"></point>
+        <point x="139" y="163"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="162" y="150"></point>
+        <point x="200" y="105"></point>
+        <point x="245" y="90"></point>
+        <point x="275" y="90"></point>
+        <point x="290" y="105"></point>
+        <point x="290" y="135"></point>
+        <point x="275" y="180"></point>
+        <point x="260" y="195"></point>
+        <point x="215" y="195"></point>
+        <point x="162" y="165"></point>
+      </polygon>
+      <polygon color="255" filled="true" marked="false">
+        <point x="150" y="255"></point>
+        <point x="135" y="225"></point>
+        <point x="120" y="150"></point>
+        <point x="135" y="120"></point>
+        <point x="150" y="105"></point>
+        <point x="165" y="120"></point>
+        <point x="180" y="150"></point>
+        <point x="165" y="225"></point>
+      </polygon>
+      <circle x="135" y="90" marked="false" color="255" diameter="30" filled="true"></circle>
+      <line endX="195" startY="105" marked="false" color="255" endY="60" startX="150"></line>
+      <line endX="105" startY="105" marked="false" color="255" endY="60" startX="150"></line>
+    </shape>
+    <shape name="car" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="300" y="180"></point>
+        <point x="279" y="164"></point>
+        <point x="261" y="144"></point>
+        <point x="240" y="135"></point>
+        <point x="226" y="132"></point>
+        <point x="213" y="106"></point>
+        <point x="203" y="84"></point>
+        <point x="185" y="63"></point>
+        <point x="159" y="50"></point>
+        <point x="135" y="50"></point>
+        <point x="75" y="60"></point>
+        <point x="0" y="150"></point>
+        <point x="0" y="165"></point>
+        <point x="0" y="225"></point>
+        <point x="300" y="225"></point>
+        <point x="300" y="180"></point>
+      </polygon>
+      <circle x="180" y="180" marked="false" color="255" diameter="90" filled="true"></circle>
+      <circle x="30" y="180" marked="false" color="255" diameter="90" filled="true"></circle>
+      <polygon color="255" filled="true" marked="false">
+        <point x="162" y="80"></point>
+        <point x="132" y="78"></point>
+        <point x="134" y="135"></point>
+        <point x="209" y="135"></point>
+        <point x="194" y="105"></point>
+        <point x="189" y="96"></point>
+        <point x="180" y="89"></point>
+      </polygon>
+      <circle x="47" y="195" marked="true" color="-1920102913" diameter="58" filled="true"></circle>
+      <circle x="195" y="195" marked="true" color="-1920102913" diameter="58" filled="true"></circle>
+    </shape>
+    <shape name="circle" rotatable="false" editableColorIndex="0">
+      <circle x="0" y="0" marked="true" color="-1920102913" diameter="300" filled="true"></circle>
+    </shape>
+    <shape name="circle 2" rotatable="false" editableColorIndex="0">
+      <circle x="0" y="0" marked="true" color="-1920102913" diameter="300" filled="true"></circle>
+      <circle x="30" y="30" marked="false" color="255" diameter="240" filled="true"></circle>
+    </shape>
+    <shape name="cow" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="200" y="193"></point>
+        <point x="197" y="249"></point>
+        <point x="179" y="249"></point>
+        <point x="177" y="196"></point>
+        <point x="166" y="187"></point>
+        <point x="140" y="189"></point>
+        <point x="93" y="191"></point>
+        <point x="78" y="179"></point>
+        <point x="72" y="211"></point>
+        <point x="49" y="209"></point>
+        <point x="48" y="181"></point>
+        <point x="37" y="149"></point>
+        <point x="25" y="120"></point>
+        <point x="25" y="89"></point>
+        <point x="45" y="72"></point>
+        <point x="103" y="84"></point>
+        <point x="179" y="75"></point>
+        <point x="198" y="76"></point>
+        <point x="252" y="64"></point>
+        <point x="272" y="81"></point>
+        <point x="293" y="103"></point>
+        <point x="285" y="121"></point>
+        <point x="255" y="121"></point>
+        <point x="242" y="118"></point>
+        <point x="224" y="167"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="73" y="210"></point>
+        <point x="86" y="251"></point>
+        <point x="62" y="249"></point>
+        <point x="48" y="208"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="25" y="114"></point>
+        <point x="16" y="195"></point>
+        <point x="9" y="204"></point>
+        <point x="23" y="213"></point>
+        <point x="25" y="200"></point>
+        <point x="39" y="123"></point>
+      </polygon>
+    </shape>
+    <shape name="cylinder" rotatable="false" editableColorIndex="0">
+      <circle x="0" y="0" marked="true" color="-1920102913" diameter="300" filled="true"></circle>
+    </shape>
+    <shape name="dot" rotatable="false" editableColorIndex="0">
+      <circle x="90" y="90" marked="true" color="-1920102913" diameter="120" filled="true"></circle>
+    </shape>
+    <shape name="eyeball" rotatable="false" editableColorIndex="0">
+      <circle x="22" y="20" marked="false" color="-1" diameter="248" filled="true"></circle>
+      <circle x="83" y="81" marked="true" color="-1920102913" diameter="122" filled="true"></circle>
+      <circle x="122" y="120" marked="false" color="255" diameter="44" filled="true"></circle>
+    </shape>
+    <shape name="face happy" rotatable="false" editableColorIndex="0">
+      <circle x="8" y="8" marked="true" color="-1920102913" diameter="285" filled="true"></circle>
+      <circle x="60" y="75" marked="false" color="255" diameter="60" filled="true"></circle>
+      <circle x="180" y="75" marked="false" color="255" diameter="60" filled="true"></circle>
+      <polygon color="255" filled="true" marked="false">
+        <point x="150" y="255"></point>
+        <point x="90" y="239"></point>
+        <point x="62" y="213"></point>
+        <point x="47" y="191"></point>
+        <point x="67" y="179"></point>
+        <point x="90" y="203"></point>
+        <point x="109" y="218"></point>
+        <point x="150" y="225"></point>
+        <point x="192" y="218"></point>
+        <point x="210" y="203"></point>
+        <point x="227" y="181"></point>
+        <point x="251" y="194"></point>
+        <point x="236" y="217"></point>
+        <point x="212" y="240"></point>
+      </polygon>
+    </shape>
+    <shape name="face neutral" rotatable="false" editableColorIndex="0">
+      <circle x="8" y="7" marked="true" color="-1920102913" diameter="285" filled="true"></circle>
+      <circle x="60" y="75" marked="false" color="255" diameter="60" filled="true"></circle>
+      <circle x="180" y="75" marked="false" color="255" diameter="60" filled="true"></circle>
+      <rectangle endX="240" startY="195" marked="false" color="255" endY="225" startX="60" filled="true"></rectangle>
+    </shape>
+    <shape name="face sad" rotatable="false" editableColorIndex="0">
+      <circle x="8" y="8" marked="true" color="-1920102913" diameter="285" filled="true"></circle>
+      <circle x="60" y="75" marked="false" color="255" diameter="60" filled="true"></circle>
+      <circle x="180" y="75" marked="false" color="255" diameter="60" filled="true"></circle>
+      <polygon color="255" filled="true" marked="false">
+        <point x="150" y="168"></point>
+        <point x="90" y="184"></point>
+        <point x="62" y="210"></point>
+        <point x="47" y="232"></point>
+        <point x="67" y="244"></point>
+        <point x="90" y="220"></point>
+        <point x="109" y="205"></point>
+        <point x="150" y="198"></point>
+        <point x="192" y="205"></point>
+        <point x="210" y="220"></point>
+        <point x="227" y="242"></point>
+        <point x="251" y="229"></point>
+        <point x="236" y="206"></point>
+        <point x="212" y="183"></point>
+      </polygon>
+    </shape>
+    <shape name="fish" rotatable="false" editableColorIndex="0">
+      <polygon color="-1" filled="true" marked="false">
+        <point x="44" y="131"></point>
+        <point x="21" y="87"></point>
+        <point x="15" y="86"></point>
+        <point x="0" y="120"></point>
+        <point x="15" y="150"></point>
+        <point x="0" y="180"></point>
+        <point x="13" y="214"></point>
+        <point x="20" y="212"></point>
+        <point x="45" y="166"></point>
+      </polygon>
+      <polygon color="-1" filled="true" marked="false">
+        <point x="135" y="195"></point>
+        <point x="119" y="235"></point>
+        <point x="95" y="218"></point>
+        <point x="76" y="210"></point>
+        <point x="46" y="204"></point>
+        <point x="60" y="165"></point>
+      </polygon>
+      <polygon color="-1" filled="true" marked="false">
+        <point x="75" y="45"></point>
+        <point x="83" y="77"></point>
+        <point x="71" y="103"></point>
+        <point x="86" y="114"></point>
+        <point x="166" y="78"></point>
+        <point x="135" y="60"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="30" y="136"></point>
+        <point x="151" y="77"></point>
+        <point x="226" y="81"></point>
+        <point x="280" y="119"></point>
+        <point x="292" y="146"></point>
+        <point x="292" y="160"></point>
+        <point x="287" y="170"></point>
+        <point x="270" y="195"></point>
+        <point x="195" y="210"></point>
+        <point x="151" y="212"></point>
+        <point x="30" y="166"></point>
+      </polygon>
+      <circle x="215" y="106" marked="false" color="255" diameter="30" filled="true"></circle>
+    </shape>
+    <shape name="flag" rotatable="false" editableColorIndex="0">
+      <rectangle endX="75" startY="15" marked="true" color="-1920102913" endY="300" startX="60" filled="true"></rectangle>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="90" y="150"></point>
+        <point x="270" y="90"></point>
+        <point x="90" y="30"></point>
+      </polygon>
+      <line endX="90" startY="135" marked="true" color="-1920102913" endY="135" startX="75"></line>
+      <line endX="90" startY="45" marked="true" color="-1920102913" endY="45" startX="75"></line>
+    </shape>
+    <shape name="flower" rotatable="false" editableColorIndex="0">
+      <polygon color="1504722175" filled="true" marked="false">
+        <point x="135" y="120"></point>
+        <point x="165" y="165"></point>
+        <point x="180" y="210"></point>
+        <point x="180" y="240"></point>
+        <point x="150" y="300"></point>
+        <point x="165" y="300"></point>
+        <point x="195" y="240"></point>
+        <point x="195" y="195"></point>
+        <point x="165" y="135"></point>
+      </polygon>
+      <circle x="85" y="132" marked="true" color="-1920102913" diameter="38" filled="true"></circle>
+      <circle x="130" y="147" marked="true" color="-1920102913" diameter="38" filled="true"></circle>
+      <circle x="192" y="85" marked="true" color="-1920102913" diameter="38" filled="true"></circle>
+      <circle x="85" y="40" marked="true" color="-1920102913" diameter="38" filled="true"></circle>
+      <circle x="177" y="40" marked="true" color="-1920102913" diameter="38" filled="true"></circle>
+      <circle x="177" y="132" marked="true" color="-1920102913" diameter="38" filled="true"></circle>
+      <circle x="70" y="85" marked="true" color="-1920102913" diameter="38" filled="true"></circle>
+      <circle x="130" y="25" marked="true" color="-1920102913" diameter="38" filled="true"></circle>
+      <circle x="96" y="51" marked="true" color="-1920102913" diameter="108" filled="true"></circle>
+      <circle x="113" y="68" marked="false" color="255" diameter="74" filled="true"></circle>
+      <polygon color="1504722175" filled="true" marked="false">
+        <point x="189" y="233"></point>
+        <point x="219" y="188"></point>
+        <point x="249" y="173"></point>
+        <point x="279" y="188"></point>
+        <point x="234" y="218"></point>
+      </polygon>
+      <polygon color="1504722175" filled="true" marked="false">
+        <point x="180" y="255"></point>
+        <point x="150" y="210"></point>
+        <point x="105" y="210"></point>
+        <point x="75" y="240"></point>
+        <point x="135" y="240"></point>
+      </polygon>
+    </shape>
+    <shape name="frog" rotatable="true" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="146" y="18"></point>
+        <point x="135" y="30"></point>
+        <point x="119" y="42"></point>
+        <point x="105" y="90"></point>
+        <point x="90" y="150"></point>
+        <point x="105" y="195"></point>
+        <point x="135" y="225"></point>
+        <point x="165" y="225"></point>
+        <point x="195" y="195"></point>
+        <point x="210" y="150"></point>
+        <point x="195" y="90"></point>
+        <point x="180" y="41"></point>
+        <point x="165" y="30"></point>
+        <point x="155" y="18"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="91" y="176"></point>
+        <point x="67" y="148"></point>
+        <point x="70" y="121"></point>
+        <point x="66" y="119"></point>
+        <point x="61" y="133"></point>
+        <point x="59" y="111"></point>
+        <point x="53" y="111"></point>
+        <point x="52" y="131"></point>
+        <point x="47" y="115"></point>
+        <point x="42" y="120"></point>
+        <point x="46" y="146"></point>
+        <point x="55" y="187"></point>
+        <point x="80" y="237"></point>
+        <point x="106" y="269"></point>
+        <point x="116" y="268"></point>
+        <point x="114" y="214"></point>
+        <point x="131" y="222"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="185" y="62"></point>
+        <point x="234" y="84"></point>
+        <point x="223" y="51"></point>
+        <point x="226" y="48"></point>
+        <point x="234" y="61"></point>
+        <point x="235" y="38"></point>
+        <point x="240" y="38"></point>
+        <point x="243" y="60"></point>
+        <point x="252" y="46"></point>
+        <point x="255" y="49"></point>
+        <point x="244" y="95"></point>
+        <point x="188" y="92"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="115" y="62"></point>
+        <point x="66" y="84"></point>
+        <point x="77" y="51"></point>
+        <point x="74" y="48"></point>
+        <point x="66" y="61"></point>
+        <point x="65" y="38"></point>
+        <point x="60" y="38"></point>
+        <point x="57" y="60"></point>
+        <point x="48" y="46"></point>
+        <point x="45" y="49"></point>
+        <point x="56" y="95"></point>
+        <point x="112" y="92"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="200" y="186"></point>
+        <point x="233" y="148"></point>
+        <point x="230" y="121"></point>
+        <point x="234" y="119"></point>
+        <point x="239" y="133"></point>
+        <point x="241" y="111"></point>
+        <point x="247" y="111"></point>
+        <point x="248" y="131"></point>
+        <point x="253" y="115"></point>
+        <point x="258" y="120"></point>
+        <point x="254" y="146"></point>
+        <point x="245" y="187"></point>
+        <point x="220" y="237"></point>
+        <point x="194" y="269"></point>
+        <point x="184" y="268"></point>
+        <point x="186" y="214"></point>
+        <point x="169" y="222"></point>
+      </polygon>
+      <circle x="157" y="38" marked="false" color="255" diameter="18" filled="true"></circle>
+      <circle x="125" y="38" marked="false" color="255" diameter="18" filled="true"></circle>
+    </shape>
+    <shape name="frog-albino" rotatable="true" editableColorIndex="0">
+      <polygon color="-1" filled="true" marked="false">
+        <point x="146" y="18"></point>
+        <point x="135" y="30"></point>
+        <point x="119" y="42"></point>
+        <point x="105" y="90"></point>
+        <point x="90" y="150"></point>
+        <point x="105" y="195"></point>
+        <point x="135" y="225"></point>
+        <point x="165" y="225"></point>
+        <point x="195" y="195"></point>
+        <point x="210" y="150"></point>
+        <point x="195" y="90"></point>
+        <point x="180" y="41"></point>
+        <point x="165" y="30"></point>
+        <point x="155" y="18"></point>
+      </polygon>
+      <polygon color="-1" filled="true" marked="false">
+        <point x="91" y="176"></point>
+        <point x="67" y="148"></point>
+        <point x="70" y="121"></point>
+        <point x="66" y="119"></point>
+        <point x="61" y="133"></point>
+        <point x="59" y="111"></point>
+        <point x="53" y="111"></point>
+        <point x="52" y="131"></point>
+        <point x="47" y="115"></point>
+        <point x="42" y="120"></point>
+        <point x="46" y="146"></point>
+        <point x="55" y="187"></point>
+        <point x="80" y="237"></point>
+        <point x="106" y="269"></point>
+        <point x="116" y="268"></point>
+        <point x="114" y="214"></point>
+        <point x="131" y="222"></point>
+      </polygon>
+      <polygon color="-1" filled="true" marked="false">
+        <point x="185" y="62"></point>
+        <point x="234" y="84"></point>
+        <point x="223" y="51"></point>
+        <point x="226" y="48"></point>
+        <point x="234" y="61"></point>
+        <point x="235" y="38"></point>
+        <point x="240" y="38"></point>
+        <point x="243" y="60"></point>
+        <point x="252" y="46"></point>
+        <point x="255" y="49"></point>
+        <point x="244" y="95"></point>
+        <point x="188" y="92"></point>
+      </polygon>
+      <polygon color="-1" filled="true" marked="false">
+        <point x="115" y="62"></point>
+        <point x="66" y="84"></point>
+        <point x="77" y="51"></point>
+        <point x="74" y="48"></point>
+        <point x="66" y="61"></point>
+        <point x="65" y="38"></point>
+        <point x="60" y="38"></point>
+        <point x="57" y="60"></point>
+        <point x="48" y="46"></point>
+        <point x="45" y="49"></point>
+        <point x="56" y="95"></point>
+        <point x="112" y="92"></point>
+      </polygon>
+      <polygon color="-1" filled="true" marked="false">
+        <point x="200" y="186"></point>
+        <point x="233" y="148"></point>
+        <point x="230" y="121"></point>
+        <point x="234" y="119"></point>
+        <point x="239" y="133"></point>
+        <point x="241" y="111"></point>
+        <point x="247" y="111"></point>
+        <point x="248" y="131"></point>
+        <point x="253" y="115"></point>
+        <point x="258" y="120"></point>
+        <point x="254" y="146"></point>
+        <point x="245" y="187"></point>
+        <point x="220" y="237"></point>
+        <point x="194" y="269"></point>
+        <point x="184" y="268"></point>
+        <point x="186" y="214"></point>
+        <point x="169" y="222"></point>
+      </polygon>
+      <circle x="157" y="38" marked="false" color="-684578305" diameter="18" filled="true"></circle>
+      <circle x="125" y="38" marked="false" color="-684578305" diameter="18" filled="true"></circle>
+    </shape>
+    <shape name="ghost" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="30" y="165"></point>
+        <point x="13" y="164"></point>
+        <point x="-2" y="149"></point>
+        <point x="0" y="135"></point>
+        <point x="-2" y="119"></point>
+        <point x="0" y="105"></point>
+        <point x="15" y="75"></point>
+        <point x="30" y="75"></point>
+        <point x="58" y="104"></point>
+        <point x="43" y="119"></point>
+        <point x="43" y="134"></point>
+        <point x="58" y="134"></point>
+        <point x="73" y="134"></point>
+        <point x="88" y="104"></point>
+        <point x="73" y="44"></point>
+        <point x="78" y="14"></point>
+        <point x="103" y="-1"></point>
+        <point x="193" y="-1"></point>
+        <point x="223" y="29"></point>
+        <point x="208" y="89"></point>
+        <point x="208" y="119"></point>
+        <point x="238" y="134"></point>
+        <point x="253" y="119"></point>
+        <point x="240" y="105"></point>
+        <point x="238" y="89"></point>
+        <point x="240" y="75"></point>
+        <point x="255" y="60"></point>
+        <point x="270" y="60"></point>
+        <point x="283" y="74"></point>
+        <point x="300" y="90"></point>
+        <point x="298" y="104"></point>
+        <point x="298" y="119"></point>
+        <point x="300" y="135"></point>
+        <point x="285" y="135"></point>
+        <point x="285" y="150"></point>
+        <point x="268" y="164"></point>
+        <point x="238" y="179"></point>
+        <point x="208" y="164"></point>
+        <point x="208" y="194"></point>
+        <point x="238" y="209"></point>
+        <point x="253" y="224"></point>
+        <point x="268" y="239"></point>
+        <point x="268" y="269"></point>
+        <point x="238" y="299"></point>
+        <point x="178" y="299"></point>
+        <point x="148" y="284"></point>
+        <point x="103" y="269"></point>
+        <point x="58" y="284"></point>
+        <point x="43" y="299"></point>
+        <point x="58" y="269"></point>
+        <point x="103" y="254"></point>
+        <point x="148" y="254"></point>
+        <point x="193" y="254"></point>
+        <point x="163" y="239"></point>
+        <point x="118" y="209"></point>
+        <point x="88" y="179"></point>
+        <point x="73" y="179"></point>
+        <point x="58" y="164"></point>
+      </polygon>
+      <line endX="215" startY="253" marked="false" color="255" endY="253" startX="189"></line>
+      <circle x="102" y="30" marked="false" color="255" diameter="30" filled="true"></circle>
+      <polygon color="255" filled="true" marked="false">
+        <point x="165" y="105"></point>
+        <point x="135" y="105"></point>
+        <point x="120" y="120"></point>
+        <point x="105" y="105"></point>
+        <point x="135" y="75"></point>
+        <point x="165" y="75"></point>
+        <point x="195" y="105"></point>
+        <point x="180" y="120"></point>
+      </polygon>
+      <circle x="160" y="30" marked="false" color="255" diameter="30" filled="true"></circle>
+    </shape>
+    <shape name="house" rotatable="false" editableColorIndex="0">
+      <rectangle endX="255" startY="120" marked="true" color="-1920102913" endY="285" startX="45" filled="true"></rectangle>
+      <rectangle endX="180" startY="210" marked="false" color="255" endY="285" startX="120" filled="true"></rectangle>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="15" y="120"></point>
+        <point x="150" y="15"></point>
+        <point x="285" y="120"></point>
+      </polygon>
+      <line endX="270" startY="120" marked="false" color="255" endY="120" startX="30"></line>
+    </shape>
+    <shape name="leaf" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="210"></point>
+        <point x="135" y="195"></point>
+        <point x="120" y="210"></point>
+        <point x="60" y="210"></point>
+        <point x="30" y="195"></point>
+        <point x="60" y="180"></point>
+        <point x="60" y="165"></point>
+        <point x="15" y="135"></point>
+        <point x="30" y="120"></point>
+        <point x="15" y="105"></point>
+        <point x="40" y="104"></point>
+        <point x="45" y="90"></point>
+        <point x="60" y="90"></point>
+        <point x="90" y="105"></point>
+        <point x="105" y="120"></point>
+        <point x="120" y="120"></point>
+        <point x="105" y="60"></point>
+        <point x="120" y="60"></point>
+        <point x="135" y="30"></point>
+        <point x="150" y="15"></point>
+        <point x="165" y="30"></point>
+        <point x="180" y="60"></point>
+        <point x="195" y="60"></point>
+        <point x="180" y="120"></point>
+        <point x="195" y="120"></point>
+        <point x="210" y="105"></point>
+        <point x="240" y="90"></point>
+        <point x="255" y="90"></point>
+        <point x="263" y="104"></point>
+        <point x="285" y="105"></point>
+        <point x="270" y="120"></point>
+        <point x="285" y="135"></point>
+        <point x="240" y="165"></point>
+        <point x="240" y="180"></point>
+        <point x="270" y="195"></point>
+        <point x="240" y="210"></point>
+        <point x="180" y="210"></point>
+        <point x="165" y="195"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="135" y="195"></point>
+        <point x="135" y="240"></point>
+        <point x="120" y="255"></point>
+        <point x="105" y="255"></point>
+        <point x="105" y="285"></point>
+        <point x="135" y="285"></point>
+        <point x="165" y="240"></point>
+        <point x="165" y="195"></point>
+      </polygon>
+    </shape>
+    <shape name="line" rotatable="true" editableColorIndex="0">
+      <line endX="150" startY="0" marked="true" color="-1920102913" endY="300" startX="150"></line>
+    </shape>
+    <shape name="line half" rotatable="true" editableColorIndex="0">
+      <line endX="150" startY="0" marked="true" color="-1920102913" endY="150" startX="150"></line>
+    </shape>
+    <shape name="mouse top" rotatable="true" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="144" y="238"></point>
+        <point x="153" y="255"></point>
+        <point x="168" y="260"></point>
+        <point x="196" y="257"></point>
+        <point x="214" y="241"></point>
+        <point x="237" y="234"></point>
+        <point x="248" y="243"></point>
+        <point x="237" y="260"></point>
+        <point x="199" y="278"></point>
+        <point x="154" y="282"></point>
+        <point x="133" y="276"></point>
+        <point x="109" y="270"></point>
+        <point x="90" y="273"></point>
+        <point x="83" y="283"></point>
+        <point x="98" y="279"></point>
+        <point x="120" y="282"></point>
+        <point x="156" y="293"></point>
+        <point x="200" y="287"></point>
+        <point x="235" y="273"></point>
+        <point x="256" y="254"></point>
+        <point x="261" y="238"></point>
+        <point x="252" y="226"></point>
+        <point x="232" y="221"></point>
+        <point x="211" y="228"></point>
+        <point x="194" y="238"></point>
+        <point x="183" y="246"></point>
+        <point x="168" y="246"></point>
+        <point x="163" y="232"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="120" y="78"></point>
+        <point x="116" y="62"></point>
+        <point x="127" y="35"></point>
+        <point x="139" y="16"></point>
+        <point x="150" y="4"></point>
+        <point x="160" y="16"></point>
+        <point x="173" y="33"></point>
+        <point x="183" y="60"></point>
+        <point x="180" y="80"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="119" y="75"></point>
+        <point x="179" y="75"></point>
+        <point x="195" y="105"></point>
+        <point x="190" y="166"></point>
+        <point x="193" y="215"></point>
+        <point x="165" y="240"></point>
+        <point x="135" y="240"></point>
+        <point x="106" y="213"></point>
+        <point x="110" y="165"></point>
+        <point x="105" y="105"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="167" y="69"></point>
+        <point x="184" y="68"></point>
+        <point x="193" y="64"></point>
+        <point x="199" y="65"></point>
+        <point x="202" y="74"></point>
+        <point x="194" y="82"></point>
+        <point x="185" y="79"></point>
+        <point x="171" y="80"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="133" y="69"></point>
+        <point x="116" y="68"></point>
+        <point x="107" y="64"></point>
+        <point x="101" y="65"></point>
+        <point x="98" y="74"></point>
+        <point x="106" y="82"></point>
+        <point x="115" y="79"></point>
+        <point x="129" y="80"></point>
+      </polygon>
+      <polygon color="255" filled="true" marked="false">
+        <point x="163" y="28"></point>
+        <point x="171" y="32"></point>
+        <point x="173" y="40"></point>
+        <point x="169" y="45"></point>
+        <point x="166" y="47"></point>
+      </polygon>
+      <polygon color="255" filled="true" marked="false">
+        <point x="137" y="28"></point>
+        <point x="129" y="32"></point>
+        <point x="127" y="40"></point>
+        <point x="131" y="45"></point>
+        <point x="134" y="47"></point>
+      </polygon>
+      <polygon color="255" filled="true" marked="false">
+        <point x="150" y="6"></point>
+        <point x="143" y="14"></point>
+        <point x="156" y="14"></point>
+      </polygon>
+      <line endX="195" startY="17" marked="true" color="-1920102913" endY="10" startX="161"></line>
+      <line endX="187" startY="22" marked="true" color="-1920102913" endY="20" startX="160"></line>
+      <line endX="201" startY="22" marked="true" color="-1920102913" endY="31" startX="160"></line>
+      <line endX="99" startY="22" marked="true" color="-1920102913" endY="31" startX="140"></line>
+      <line endX="113" startY="22" marked="true" color="-1920102913" endY="20" startX="140"></line>
+      <line endX="105" startY="17" marked="true" color="-1920102913" endY="10" startX="139"></line>
+    </shape>
+    <shape name="pentagon" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="15"></point>
+        <point x="15" y="120"></point>
+        <point x="60" y="285"></point>
+        <point x="240" y="285"></point>
+        <point x="285" y="120"></point>
+      </polygon>
+    </shape>
+    <shape name="person" rotatable="false" editableColorIndex="0">
+      <circle x="110" y="5" marked="true" color="-1920102913" diameter="80" filled="true"></circle>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="105" y="90"></point>
+        <point x="120" y="195"></point>
+        <point x="90" y="285"></point>
+        <point x="105" y="300"></point>
+        <point x="135" y="300"></point>
+        <point x="150" y="225"></point>
+        <point x="165" y="300"></point>
+        <point x="195" y="300"></point>
+        <point x="210" y="285"></point>
+        <point x="180" y="195"></point>
+        <point x="195" y="90"></point>
+      </polygon>
+      <rectangle endX="172" startY="79" marked="true" color="-1920102913" endY="94" startX="127" filled="true"></rectangle>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="195" y="90"></point>
+        <point x="240" y="150"></point>
+        <point x="225" y="180"></point>
+        <point x="165" y="105"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="105" y="90"></point>
+        <point x="60" y="150"></point>
+        <point x="75" y="180"></point>
+        <point x="135" y="105"></point>
+      </polygon>
+    </shape>
+    <shape name="plant" rotatable="false" editableColorIndex="0">
+      <rectangle endX="165" startY="90" marked="true" color="-1920102913" endY="300" startX="135" filled="true"></rectangle>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="135" y="255"></point>
+        <point x="90" y="210"></point>
+        <point x="45" y="195"></point>
+        <point x="75" y="255"></point>
+        <point x="135" y="285"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="165" y="255"></point>
+        <point x="210" y="210"></point>
+        <point x="255" y="195"></point>
+        <point x="225" y="255"></point>
+        <point x="165" y="285"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="135" y="180"></point>
+        <point x="90" y="135"></point>
+        <point x="45" y="120"></point>
+        <point x="75" y="180"></point>
+        <point x="135" y="210"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="165" y="180"></point>
+        <point x="165" y="210"></point>
+        <point x="225" y="180"></point>
+        <point x="255" y="120"></point>
+        <point x="210" y="135"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="135" y="105"></point>
+        <point x="90" y="60"></point>
+        <point x="45" y="45"></point>
+        <point x="75" y="105"></point>
+        <point x="135" y="135"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="165" y="105"></point>
+        <point x="165" y="135"></point>
+        <point x="225" y="105"></point>
+        <point x="255" y="45"></point>
+        <point x="210" y="60"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="135" y="90"></point>
+        <point x="120" y="45"></point>
+        <point x="150" y="15"></point>
+        <point x="180" y="45"></point>
+        <point x="165" y="90"></point>
+      </polygon>
+    </shape>
+    <shape name="salamander" rotatable="true" editableColorIndex="3">
+      <polygon color="-1653716737" filled="true" marked="true">
+        <point x="120" y="78"></point>
+        <point x="116" y="62"></point>
+        <point x="120" y="30"></point>
+        <point x="139" y="16"></point>
+        <point x="150" y="15"></point>
+        <point x="160" y="16"></point>
+        <point x="180" y="30"></point>
+        <point x="183" y="60"></point>
+        <point x="180" y="80"></point>
+      </polygon>
+      <polygon color="-1653716737" filled="true" marked="true">
+        <point x="119" y="75"></point>
+        <point x="179" y="75"></point>
+        <point x="180" y="105"></point>
+        <point x="190" y="166"></point>
+        <point x="180" y="225"></point>
+        <point x="165" y="240"></point>
+        <point x="135" y="240"></point>
+        <point x="120" y="225"></point>
+        <point x="110" y="165"></point>
+        <point x="120" y="105"></point>
+      </polygon>
+      <circle x="135" y="105" marked="false" color="255" diameter="0" filled="true"></circle>
+      <rectangle endX="135" startY="30" marked="false" color="255" endY="45" startX="120" filled="true"></rectangle>
+      <rectangle endX="180" startY="30" marked="false" color="255" endY="45" startX="165" filled="true"></rectangle>
+      <rectangle endX="195" startY="105" marked="true" color="-1653716737" endY="120" startX="180" filled="true"></rectangle>
+      <rectangle endX="210" startY="90" marked="true" color="-1653716737" endY="120" startX="195" filled="true"></rectangle>
+      <rectangle endX="120" startY="105" marked="true" color="-1653716737" endY="120" startX="90" filled="true"></rectangle>
+      <rectangle endX="105" startY="90" marked="true" color="-1653716737" endY="120" startX="90" filled="true"></rectangle>
+      <rectangle endX="120" startY="195" marked="true" color="-1653716737" endY="210" startX="90" filled="true"></rectangle>
+      <rectangle endX="105" startY="210" marked="true" color="-1653716737" endY="225" startX="90" filled="true"></rectangle>
+      <rectangle endX="210" startY="195" marked="true" color="-1653716737" endY="210" startX="180" filled="true"></rectangle>
+      <rectangle endX="210" startY="210" marked="true" color="-1653716737" endY="225" startX="195" filled="true"></rectangle>
+      <polygon color="-1653716737" filled="true" marked="true">
+        <point x="135" y="240"></point>
+        <point x="165" y="270"></point>
+        <point x="120" y="285"></point>
+        <point x="210" y="285"></point>
+        <point x="180" y="240"></point>
+        <point x="165" y="225"></point>
+        <point x="135" y="240"></point>
+      </polygon>
+      <rectangle endX="180" startY="165" marked="false" color="-303222273" endY="180" startX="165" filled="true"></rectangle>
+      <rectangle endX="135" startY="165" marked="false" color="-303222273" endY="180" startX="120" filled="true"></rectangle>
+      <rectangle endX="165" startY="195" marked="false" color="-303222273" endY="210" startX="150" filled="true"></rectangle>
+      <rectangle endX="180" startY="135" marked="false" color="-303222273" endY="150" startX="165" filled="true"></rectangle>
+      <rectangle endX="135" startY="135" marked="false" color="-303222273" endY="150" startX="120" filled="true"></rectangle>
+      <rectangle endX="150" startY="105" marked="false" color="-303222273" endY="120" startX="135" filled="true"></rectangle>
+    </shape>
+    <shape name="salamander-albino" rotatable="true" editableColorIndex="3">
+      <polygon color="-1" filled="true" marked="false">
+        <point x="120" y="78"></point>
+        <point x="116" y="62"></point>
+        <point x="120" y="30"></point>
+        <point x="139" y="16"></point>
+        <point x="150" y="15"></point>
+        <point x="160" y="16"></point>
+        <point x="180" y="30"></point>
+        <point x="183" y="60"></point>
+        <point x="180" y="80"></point>
+      </polygon>
+      <polygon color="-1" filled="true" marked="false">
+        <point x="119" y="75"></point>
+        <point x="179" y="75"></point>
+        <point x="180" y="105"></point>
+        <point x="190" y="166"></point>
+        <point x="180" y="225"></point>
+        <point x="165" y="240"></point>
+        <point x="135" y="240"></point>
+        <point x="120" y="225"></point>
+        <point x="110" y="165"></point>
+        <point x="120" y="105"></point>
+      </polygon>
+      <circle x="135" y="105" marked="false" color="255" diameter="0" filled="true"></circle>
+      <rectangle endX="135" startY="30" marked="false" color="-684578305" endY="45" startX="120" filled="true"></rectangle>
+      <rectangle endX="180" startY="30" marked="false" color="-684578305" endY="45" startX="165" filled="true"></rectangle>
+      <rectangle endX="195" startY="105" marked="false" color="-1" endY="120" startX="180" filled="true"></rectangle>
+      <rectangle endX="210" startY="90" marked="false" color="-1" endY="120" startX="195" filled="true"></rectangle>
+      <rectangle endX="120" startY="105" marked="false" color="-1" endY="120" startX="90" filled="true"></rectangle>
+      <rectangle endX="105" startY="90" marked="false" color="-1" endY="120" startX="90" filled="true"></rectangle>
+      <rectangle endX="120" startY="195" marked="false" color="-1" endY="210" startX="90" filled="true"></rectangle>
+      <rectangle endX="105" startY="210" marked="false" color="-1" endY="225" startX="90" filled="true"></rectangle>
+      <rectangle endX="210" startY="195" marked="false" color="-1" endY="210" startX="180" filled="true"></rectangle>
+      <rectangle endX="210" startY="210" marked="false" color="-1" endY="225" startX="195" filled="true"></rectangle>
+      <polygon color="-1" filled="true" marked="false">
+        <point x="135" y="240"></point>
+        <point x="165" y="270"></point>
+        <point x="120" y="285"></point>
+        <point x="210" y="285"></point>
+        <point x="180" y="240"></point>
+        <point x="165" y="225"></point>
+        <point x="135" y="240"></point>
+      </polygon>
+    </shape>
+    <shape name="salamander-larva" rotatable="true" editableColorIndex="3">
+      <polygon color="-1653716737" filled="true" marked="true">
+        <point x="120" y="78"></point>
+        <point x="116" y="62"></point>
+        <point x="120" y="30"></point>
+        <point x="139" y="16"></point>
+        <point x="150" y="15"></point>
+        <point x="160" y="16"></point>
+        <point x="180" y="30"></point>
+        <point x="183" y="60"></point>
+        <point x="180" y="80"></point>
+      </polygon>
+      <polygon color="-1653716737" filled="true" marked="true">
+        <point x="119" y="75"></point>
+        <point x="179" y="75"></point>
+        <point x="180" y="105"></point>
+        <point x="190" y="166"></point>
+        <point x="180" y="225"></point>
+        <point x="165" y="240"></point>
+        <point x="135" y="240"></point>
+        <point x="120" y="225"></point>
+        <point x="110" y="165"></point>
+        <point x="120" y="105"></point>
+      </polygon>
+      <line endX="225" startY="47" marked="true" color="-1653716737" endY="60" startX="176"></line>
+      <line endX="210" startY="52" marked="true" color="-1653716737" endY="60" startX="175"></line>
+      <line endX="210" startY="52" marked="true" color="-1653716737" endY="75" startX="175"></line>
+      <line endX="90" startY="52" marked="true" color="-1653716737" endY="75" startX="125"></line>
+      <line endX="90" startY="52" marked="true" color="-1653716737" endY="60" startX="125"></line>
+      <line endX="75" startY="47" marked="true" color="-1653716737" endY="60" startX="124"></line>
+      <circle x="135" y="105" marked="false" color="255" diameter="0" filled="true"></circle>
+      <rectangle endX="135" startY="30" marked="false" color="255" endY="45" startX="120" filled="true"></rectangle>
+      <rectangle endX="180" startY="30" marked="false" color="255" endY="45" startX="165" filled="true"></rectangle>
+      <rectangle endX="195" startY="105" marked="true" color="-1653716737" endY="120" startX="180" filled="true"></rectangle>
+      <rectangle endX="210" startY="90" marked="true" color="-1653716737" endY="120" startX="195" filled="true"></rectangle>
+      <rectangle endX="120" startY="105" marked="true" color="-1653716737" endY="120" startX="90" filled="true"></rectangle>
+      <rectangle endX="105" startY="90" marked="true" color="-1653716737" endY="120" startX="90" filled="true"></rectangle>
+      <rectangle endX="120" startY="195" marked="true" color="-1653716737" endY="210" startX="90" filled="true"></rectangle>
+      <rectangle endX="105" startY="210" marked="true" color="-1653716737" endY="225" startX="90" filled="true"></rectangle>
+      <rectangle endX="210" startY="195" marked="true" color="-1653716737" endY="210" startX="180" filled="true"></rectangle>
+      <rectangle endX="210" startY="210" marked="true" color="-1653716737" endY="225" startX="195" filled="true"></rectangle>
+      <polygon color="-1653716737" filled="true" marked="true">
+        <point x="135" y="240"></point>
+        <point x="165" y="270"></point>
+        <point x="120" y="285"></point>
+        <point x="210" y="285"></point>
+        <point x="180" y="240"></point>
+        <point x="165" y="225"></point>
+        <point x="135" y="240"></point>
+      </polygon>
+    </shape>
+    <shape name="salamander-larva-albino" rotatable="true" editableColorIndex="3">
+      <polygon color="-1" filled="true" marked="false">
+        <point x="120" y="78"></point>
+        <point x="116" y="62"></point>
+        <point x="120" y="30"></point>
+        <point x="139" y="16"></point>
+        <point x="150" y="15"></point>
+        <point x="160" y="16"></point>
+        <point x="180" y="30"></point>
+        <point x="183" y="60"></point>
+        <point x="180" y="80"></point>
+      </polygon>
+      <polygon color="-1" filled="true" marked="false">
+        <point x="119" y="75"></point>
+        <point x="179" y="75"></point>
+        <point x="180" y="105"></point>
+        <point x="190" y="166"></point>
+        <point x="180" y="225"></point>
+        <point x="165" y="240"></point>
+        <point x="135" y="240"></point>
+        <point x="120" y="225"></point>
+        <point x="110" y="165"></point>
+        <point x="120" y="105"></point>
+      </polygon>
+      <line endX="225" startY="47" marked="false" color="-1" endY="60" startX="176"></line>
+      <line endX="210" startY="52" marked="false" color="-1" endY="60" startX="175"></line>
+      <line endX="210" startY="52" marked="false" color="-1" endY="75" startX="175"></line>
+      <line endX="90" startY="52" marked="false" color="-1" endY="75" startX="125"></line>
+      <line endX="90" startY="52" marked="false" color="-1" endY="60" startX="125"></line>
+      <line endX="75" startY="47" marked="false" color="-1" endY="60" startX="124"></line>
+      <circle x="135" y="105" marked="false" color="255" diameter="0" filled="true"></circle>
+      <rectangle endX="135" startY="30" marked="false" color="-684578305" endY="45" startX="120" filled="true"></rectangle>
+      <rectangle endX="180" startY="30" marked="false" color="-684578305" endY="45" startX="165" filled="true"></rectangle>
+      <rectangle endX="195" startY="105" marked="false" color="-1" endY="120" startX="180" filled="true"></rectangle>
+      <rectangle endX="210" startY="90" marked="false" color="-1" endY="120" startX="195" filled="true"></rectangle>
+      <rectangle endX="120" startY="105" marked="false" color="-1" endY="120" startX="90" filled="true"></rectangle>
+      <rectangle endX="105" startY="90" marked="false" color="-1" endY="120" startX="90" filled="true"></rectangle>
+      <rectangle endX="120" startY="195" marked="false" color="-1" endY="210" startX="90" filled="true"></rectangle>
+      <rectangle endX="105" startY="210" marked="false" color="-1" endY="225" startX="90" filled="true"></rectangle>
+      <rectangle endX="210" startY="195" marked="false" color="-1" endY="210" startX="180" filled="true"></rectangle>
+      <rectangle endX="210" startY="210" marked="false" color="-1" endY="225" startX="195" filled="true"></rectangle>
+      <polygon color="-1" filled="true" marked="false">
+        <point x="135" y="240"></point>
+        <point x="165" y="270"></point>
+        <point x="120" y="285"></point>
+        <point x="210" y="285"></point>
+        <point x="180" y="240"></point>
+        <point x="165" y="225"></point>
+        <point x="135" y="240"></point>
+      </polygon>
+    </shape>
+    <shape name="sheep" rotatable="false" editableColorIndex="15">
+      <circle x="203" y="65" marked="true" color="-1" diameter="88" filled="true"></circle>
+      <circle x="70" y="65" marked="true" color="-1" diameter="162" filled="true"></circle>
+      <circle x="150" y="105" marked="true" color="-1" diameter="120" filled="true"></circle>
+      <polygon color="-1920102913" filled="true" marked="false">
+        <point x="218" y="120"></point>
+        <point x="240" y="165"></point>
+        <point x="255" y="165"></point>
+        <point x="278" y="120"></point>
+      </polygon>
+      <circle x="214" y="72" marked="false" color="-1920102913" diameter="67" filled="true"></circle>
+      <rectangle endX="179" startY="223" marked="true" color="-1" endY="298" startX="164" filled="true"></rectangle>
+      <polygon color="-1" filled="true" marked="true">
+        <point x="45" y="285"></point>
+        <point x="30" y="285"></point>
+        <point x="30" y="240"></point>
+        <point x="15" y="195"></point>
+        <point x="45" y="210"></point>
+      </polygon>
+      <circle x="3" y="83" marked="true" color="-1" diameter="150" filled="true"></circle>
+      <rectangle endX="80" startY="221" marked="true" color="-1" endY="296" startX="65" filled="true"></rectangle>
+      <polygon color="-1" filled="true" marked="true">
+        <point x="195" y="285"></point>
+        <point x="210" y="285"></point>
+        <point x="210" y="240"></point>
+        <point x="240" y="210"></point>
+        <point x="195" y="210"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="false">
+        <point x="276" y="85"></point>
+        <point x="285" y="105"></point>
+        <point x="302" y="99"></point>
+        <point x="294" y="83"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="false">
+        <point x="219" y="85"></point>
+        <point x="210" y="105"></point>
+        <point x="193" y="99"></point>
+        <point x="201" y="83"></point>
+      </polygon>
+    </shape>
+    <shape name="square" rotatable="false" editableColorIndex="0">
+      <rectangle endX="270" startY="30" marked="true" color="-1920102913" endY="270" startX="30" filled="true"></rectangle>
+    </shape>
+    <shape name="square 2" rotatable="false" editableColorIndex="0">
+      <rectangle endX="270" startY="30" marked="true" color="-1920102913" endY="270" startX="30" filled="true"></rectangle>
+      <rectangle endX="240" startY="60" marked="false" color="255" endY="240" startX="60" filled="true"></rectangle>
+    </shape>
+    <shape name="star" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="151" y="1"></point>
+        <point x="185" y="108"></point>
+        <point x="298" y="108"></point>
+        <point x="207" y="175"></point>
+        <point x="242" y="282"></point>
+        <point x="151" y="216"></point>
+        <point x="59" y="282"></point>
+        <point x="94" y="175"></point>
+        <point x="3" y="108"></point>
+        <point x="116" y="108"></point>
+      </polygon>
+    </shape>
+    <shape name="tadpole" rotatable="false" editableColorIndex="0">
+      <polygon color="-1" filled="true" marked="false">
+        <point x="44" y="131"></point>
+        <point x="135" y="90"></point>
+        <point x="30" y="105"></point>
+        <point x="0" y="120"></point>
+        <point x="0" y="150"></point>
+        <point x="0" y="180"></point>
+        <point x="45" y="195"></point>
+        <point x="150" y="210"></point>
+        <point x="45" y="166"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="30" y="136"></point>
+        <point x="151" y="77"></point>
+        <point x="226" y="81"></point>
+        <point x="280" y="119"></point>
+        <point x="292" y="146"></point>
+        <point x="292" y="160"></point>
+        <point x="287" y="170"></point>
+        <point x="270" y="195"></point>
+        <point x="195" y="210"></point>
+        <point x="151" y="212"></point>
+        <point x="30" y="166"></point>
+      </polygon>
+      <circle x="215" y="106" marked="false" color="255" diameter="30" filled="true"></circle>
+    </shape>
+    <shape name="tadpole-albino" rotatable="false" editableColorIndex="0">
+      <polygon color="-1" filled="true" marked="false">
+        <point x="44" y="131"></point>
+        <point x="135" y="90"></point>
+        <point x="30" y="105"></point>
+        <point x="0" y="120"></point>
+        <point x="0" y="150"></point>
+        <point x="0" y="180"></point>
+        <point x="45" y="195"></point>
+        <point x="150" y="210"></point>
+        <point x="45" y="166"></point>
+      </polygon>
+      <polygon color="-1" filled="true" marked="false">
+        <point x="30" y="136"></point>
+        <point x="151" y="77"></point>
+        <point x="226" y="81"></point>
+        <point x="280" y="119"></point>
+        <point x="292" y="146"></point>
+        <point x="292" y="160"></point>
+        <point x="287" y="170"></point>
+        <point x="270" y="195"></point>
+        <point x="195" y="210"></point>
+        <point x="151" y="212"></point>
+        <point x="30" y="166"></point>
+      </polygon>
+      <circle x="215" y="106" marked="false" color="-684578305" diameter="30" filled="true"></circle>
+    </shape>
+    <shape name="target" rotatable="false" editableColorIndex="0">
+      <circle x="0" y="0" marked="true" color="-1920102913" diameter="300" filled="true"></circle>
+      <circle x="30" y="30" marked="false" color="255" diameter="240" filled="true"></circle>
+      <circle x="60" y="60" marked="true" color="-1920102913" diameter="180" filled="true"></circle>
+      <circle x="90" y="90" marked="false" color="255" diameter="120" filled="true"></circle>
+      <circle x="120" y="120" marked="true" color="-1920102913" diameter="60" filled="true"></circle>
+    </shape>
+    <shape name="tree" rotatable="false" editableColorIndex="0">
+      <circle x="118" y="3" marked="true" color="-1920102913" diameter="94" filled="true"></circle>
+      <rectangle endX="180" startY="195" marked="false" color="-1653716737" endY="300" startX="120" filled="true"></rectangle>
+      <circle x="65" y="21" marked="true" color="-1920102913" diameter="108" filled="true"></circle>
+      <circle x="116" y="41" marked="true" color="-1920102913" diameter="127" filled="true"></circle>
+      <circle x="45" y="90" marked="true" color="-1920102913" diameter="120" filled="true"></circle>
+      <circle x="104" y="74" marked="true" color="-1920102913" diameter="152" filled="true"></circle>
+    </shape>
+    <shape name="triangle" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="30"></point>
+        <point x="15" y="255"></point>
+        <point x="285" y="255"></point>
+      </polygon>
+    </shape>
+    <shape name="triangle 2" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="30"></point>
+        <point x="15" y="255"></point>
+        <point x="285" y="255"></point>
+      </polygon>
+      <polygon color="255" filled="true" marked="false">
+        <point x="151" y="99"></point>
+        <point x="225" y="223"></point>
+        <point x="75" y="224"></point>
+      </polygon>
+    </shape>
+    <shape name="truck" rotatable="false" editableColorIndex="0">
+      <rectangle endX="195" startY="45" marked="true" color="-1920102913" endY="187" startX="4" filled="true"></rectangle>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="296" y="193"></point>
+        <point x="296" y="150"></point>
+        <point x="259" y="134"></point>
+        <point x="244" y="104"></point>
+        <point x="208" y="104"></point>
+        <point x="207" y="194"></point>
+      </polygon>
+      <rectangle endX="195" startY="60" marked="false" color="-1" endY="105" startX="195" filled="true"></rectangle>
+      <polygon color="255" filled="true" marked="false">
+        <point x="238" y="112"></point>
+        <point x="252" y="141"></point>
+        <point x="219" y="141"></point>
+        <point x="218" y="112"></point>
+      </polygon>
+      <circle x="234" y="174" marked="false" color="255" diameter="42" filled="true"></circle>
+      <rectangle endX="214" startY="185" marked="true" color="-1920102913" endY="194" startX="181" filled="true"></rectangle>
+      <circle x="144" y="174" marked="false" color="255" diameter="42" filled="true"></circle>
+      <circle x="24" y="174" marked="false" color="255" diameter="42" filled="true"></circle>
+      <circle x="24" y="174" marked="true" color="-1920102913" diameter="42" filled="false"></circle>
+      <circle x="144" y="174" marked="true" color="-1920102913" diameter="42" filled="false"></circle>
+      <circle x="234" y="174" marked="true" color="-1920102913" diameter="42" filled="false"></circle>
+    </shape>
+    <shape name="turtle" rotatable="true" editableColorIndex="0">
+      <polygon color="1504722175" filled="true" marked="false">
+        <point x="215" y="204"></point>
+        <point x="240" y="233"></point>
+        <point x="246" y="254"></point>
+        <point x="228" y="266"></point>
+        <point x="215" y="252"></point>
+        <point x="193" y="210"></point>
+      </polygon>
+      <polygon color="1504722175" filled="true" marked="false">
+        <point x="195" y="90"></point>
+        <point x="225" y="75"></point>
+        <point x="245" y="75"></point>
+        <point x="260" y="89"></point>
+        <point x="269" y="108"></point>
+        <point x="261" y="124"></point>
+        <point x="240" y="105"></point>
+        <point x="225" y="105"></point>
+        <point x="210" y="105"></point>
+      </polygon>
+      <polygon color="1504722175" filled="true" marked="false">
+        <point x="105" y="90"></point>
+        <point x="75" y="75"></point>
+        <point x="55" y="75"></point>
+        <point x="40" y="89"></point>
+        <point x="31" y="108"></point>
+        <point x="39" y="124"></point>
+        <point x="60" y="105"></point>
+        <point x="75" y="105"></point>
+        <point x="90" y="105"></point>
+      </polygon>
+      <polygon color="1504722175" filled="true" marked="false">
+        <point x="132" y="85"></point>
+        <point x="134" y="64"></point>
+        <point x="107" y="51"></point>
+        <point x="108" y="17"></point>
+        <point x="150" y="2"></point>
+        <point x="192" y="18"></point>
+        <point x="192" y="52"></point>
+        <point x="169" y="65"></point>
+        <point x="172" y="87"></point>
+      </polygon>
+      <polygon color="1504722175" filled="true" marked="false">
+        <point x="85" y="204"></point>
+        <point x="60" y="233"></point>
+        <point x="54" y="254"></point>
+        <point x="72" y="266"></point>
+        <point x="85" y="252"></point>
+        <point x="107" y="210"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="119" y="75"></point>
+        <point x="179" y="75"></point>
+        <point x="209" y="101"></point>
+        <point x="224" y="135"></point>
+        <point x="220" y="225"></point>
+        <point x="175" y="261"></point>
+        <point x="128" y="261"></point>
+        <point x="81" y="224"></point>
+        <point x="74" y="135"></point>
+        <point x="88" y="99"></point>
+      </polygon>
+    </shape>
+    <shape name="wheel" rotatable="false" editableColorIndex="0">
+      <circle x="3" y="3" marked="true" color="-1920102913" diameter="294" filled="true"></circle>
+      <circle x="30" y="30" marked="false" color="255" diameter="240" filled="true"></circle>
+      <line endX="150" startY="285" marked="true" color="-1920102913" endY="15" startX="150"></line>
+      <line endX="285" startY="150" marked="true" color="-1920102913" endY="150" startX="15"></line>
+      <circle x="120" y="120" marked="true" color="-1920102913" diameter="60" filled="true"></circle>
+      <line endX="79" startY="40" marked="true" color="-1920102913" endY="269" startX="216"></line>
+      <line endX="269" startY="84" marked="true" color="-1920102913" endY="221" startX="40"></line>
+      <line endX="269" startY="216" marked="true" color="-1920102913" endY="79" startX="40"></line>
+      <line endX="221" startY="40" marked="true" color="-1920102913" endY="269" startX="84"></line>
+    </shape>
+    <shape name="wolf" rotatable="false" editableColorIndex="0">
+      <polygon color="255" filled="true" marked="false">
+        <point x="253" y="133"></point>
+        <point x="245" y="131"></point>
+        <point x="245" y="133"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="2" y="194"></point>
+        <point x="13" y="197"></point>
+        <point x="30" y="191"></point>
+        <point x="38" y="193"></point>
+        <point x="38" y="205"></point>
+        <point x="20" y="226"></point>
+        <point x="20" y="257"></point>
+        <point x="27" y="265"></point>
+        <point x="38" y="266"></point>
+        <point x="40" y="260"></point>
+        <point x="31" y="253"></point>
+        <point x="31" y="230"></point>
+        <point x="60" y="206"></point>
+        <point x="68" y="198"></point>
+        <point x="75" y="209"></point>
+        <point x="66" y="228"></point>
+        <point x="65" y="243"></point>
+        <point x="82" y="261"></point>
+        <point x="84" y="268"></point>
+        <point x="100" y="267"></point>
+        <point x="103" y="261"></point>
+        <point x="77" y="239"></point>
+        <point x="79" y="231"></point>
+        <point x="100" y="207"></point>
+        <point x="98" y="196"></point>
+        <point x="119" y="201"></point>
+        <point x="143" y="202"></point>
+        <point x="160" y="195"></point>
+        <point x="166" y="210"></point>
+        <point x="172" y="213"></point>
+        <point x="173" y="238"></point>
+        <point x="167" y="251"></point>
+        <point x="160" y="248"></point>
+        <point x="154" y="265"></point>
+        <point x="169" y="264"></point>
+        <point x="178" y="247"></point>
+        <point x="186" y="240"></point>
+        <point x="198" y="260"></point>
+        <point x="200" y="271"></point>
+        <point x="217" y="271"></point>
+        <point x="219" y="262"></point>
+        <point x="207" y="258"></point>
+        <point x="195" y="230"></point>
+        <point x="192" y="198"></point>
+        <point x="210" y="184"></point>
+        <point x="227" y="164"></point>
+        <point x="242" y="144"></point>
+        <point x="259" y="145"></point>
+        <point x="284" y="151"></point>
+        <point x="277" y="141"></point>
+        <point x="293" y="140"></point>
+        <point x="299" y="134"></point>
+        <point x="297" y="127"></point>
+        <point x="273" y="119"></point>
+        <point x="270" y="105"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="-1" y="195"></point>
+        <point x="14" y="180"></point>
+        <point x="36" y="166"></point>
+        <point x="40" y="153"></point>
+        <point x="53" y="140"></point>
+        <point x="82" y="131"></point>
+        <point x="134" y="133"></point>
+        <point x="159" y="126"></point>
+        <point x="188" y="115"></point>
+        <point x="227" y="108"></point>
+        <point x="236" y="102"></point>
+        <point x="238" y="98"></point>
+        <point x="268" y="86"></point>
+        <point x="269" y="92"></point>
+        <point x="281" y="87"></point>
+        <point x="269" y="103"></point>
+        <point x="269" y="113"></point>
+      </polygon>
+    </shape>
+    <shape name="x" rotatable="false" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="270" y="75"></point>
+        <point x="225" y="30"></point>
+        <point x="30" y="225"></point>
+        <point x="75" y="270"></point>
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="30" y="75"></point>
+        <point x="75" y="30"></point>
+        <point x="270" y="225"></point>
+        <point x="225" y="270"></point>
+      </polygon>
+    </shape>
+  </turtleShapes>
+  <linkShapes>
+    <shape name="default" curviness="0.0">
+      <lines>
+        <line x="-0.2" visible="false">
+          <dash value="0.0"></dash>
+          <dash value="1.0"></dash>
+        </line>
+        <line x="0.0" visible="true">
+          <dash value="1.0"></dash>
+          <dash value="0.0"></dash>
+        </line>
+        <line x="0.2" visible="false">
+          <dash value="0.0"></dash>
+          <dash value="1.0"></dash>
+        </line>
+      </lines>
+      <indicator>
+        <shape name="link direction" rotatable="true" editableColorIndex="0">
+          <line endX="90" startY="150" marked="true" color="-1920102913" endY="180" startX="150"></line>
+          <line endX="210" startY="150" marked="true" color="-1920102913" endY="180" startX="150"></line>
+        </shape>
+      </indicator>
+    </shape>
+  </linkShapes>
+  <previewCommands>setup repeat 75 [ go ]</previewCommands>
+</model>
